@@ -2,4 +2,5 @@
 *.swp
 *.log
 /*.pdf
+/proposal/*.pdf
 *.aux
