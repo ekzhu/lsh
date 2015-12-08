@@ -4,9 +4,11 @@
 // #include <iomanip>
 #include <vector>
 
+#include <flann/flann.hpp>
+
 using namespace std;
 
-using flann::Matrix;
+using namespace flann;
 
 namespace {
 // Constants.
@@ -18,21 +20,21 @@ const int kSize = kWidth * kHeight * kChannels;
 
 
 // Reads input dataset into a matrix.
-Matrix<int> ReadData(const string& filename) {
-    std::ifstream is(filename, std::ifstream::binary);
+Matrix<float> ReadData(const string& filename) {
+    std::ifstream is(filename.c_str(), std::ifstream::binary);
 
 
     // Read entire file into local vector.
     std::vector<char> buffer(
-        std::istreambuf_iterator<char>(is), 
-        std::istreambuf_iterator<char>());
+        (std::istreambuf_iterator<char>(is)), 
+        (std::istreambuf_iterator<char>()));
 
     cout << "Read: " << buffer.size() << " values." << endl;
 
     // Convert into matrix.
-    int* data[] = new int[buffer.size()];
+    float* data = new float[buffer.size()];
     for (int i = 0; i < buffer.size(); i++) {
-        (*data)[i] = buffer[i] & 0x0000FF;
+        data[i] = static_cast<float>(buffer[i] & 0x0000FF);
     }
 
     
@@ -53,12 +55,12 @@ Matrix<int> ReadData(const string& filename) {
 */
 
 
-    return Matrix<int>(data, buffer.size() / kSize, kSize);
+    return Matrix<float>(data, buffer.size() / kSize, kSize);
 }
 
 
 int main(int argc, char *argv[]) {
-    Matrix<int> dataset = ReadData(argv[1]);
+    Matrix<float> dataset = ReadData(argv[1]);
 
     // int nn = 3;
 
@@ -76,7 +78,7 @@ int main(int argc, char *argv[]) {
     index.buildIndex();                                                                                               
 
     // do a knn search, using 128 checks
-    index.knnSearch(dataset, indices, dists, nn, flann::SearchParams(CHECKS_UNLIMITED));
+    index.knnSearch(dataset, indices, dists, dataset.rows, flann::SearchParams(-1));
 
     // flann::save_to_file(indices,"result.hdf5","result");
 
