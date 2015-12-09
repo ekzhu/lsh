@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 2.6)
 
-
 project(CSC2515Project)
 string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LOWER)
 
@@ -17,8 +16,9 @@ endif ()
 set(EXECUTABLE_OUTPUT_PATH "${PROJECT_BINARY_DIR}/bin")
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH "${PROJECT_BINARY_DIR}/lib")
-# set output path for tests
-set(TEST_OUTPUT_PATH "${PROJECT_SOURCE_DIR}/test")
+
+# Include Flann
+include("${PROJECT_SOURCE_DIR}/flann/cmake/FindFlann.cmake")
 
 #set the C/C++ include path to the "include" directory
 include_directories(BEFORE "${PROJECT_SOURCE_DIR}/flann/src/cpp")
