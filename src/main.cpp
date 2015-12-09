@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
 
     // construct an randomized kd-tree index using 4 kd-trees
     // Index<L2<float> > index(dataset, flann::KDTreeIndexParams(4));
-    Index<L2<float>> index(dataset, flann::LinearIndexParams());
+    Index<L2<float> > index(dataset, flann::LinearIndexParams());
     index.buildIndex();                                                                                               
 
     // do a knn search, using 128 checks

@@ -1,3 +1,6 @@
 [submodule "flann"]
 	path = flann
 	url = git://github.com/mariusmuja/flann
+[submodule "opencv"]
+	path = opencv
+	url = git@github.com:Itseez/opencv.git

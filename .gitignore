@@ -5,3 +5,4 @@
 /proposal/*.pdf
 *.aux
 a.out
+/build
