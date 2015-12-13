@@ -4,3 +4,9 @@
 [submodule "opencv"]
 	path = opencv
 	url = git@github.com:Itseez/opencv.git
+[submodule "LuaSHkit"]
+	path = LuaSHkit
+	url = git@github.com:ocallaco/LuaSHkit.git
+[submodule "scikit-learn"]
+	path = scikit-learn
+	url = git@github.com:scikit-learn/scikit-learn.git
