@@ -48,6 +48,22 @@ func (tree *Tree) insertIntoTree(id int, tableKey TableKey) {
 	}
 }
 
+func (tree *Tree) lookup(tableKey TableKey) []int {
+	indices := make([]int, 0)
+	currentNode := &tree.root
+	for level := 0; level < len(tableKey); level++ {
+		if next, ok := currentNode.children[tableKey[level]]; !ok {
+			return indices
+		} else {
+			currentNode = next
+		}
+	}
+	for child := range currentNode.indices {
+		indices = append(indices, child)
+	}
+	return indices
+}
+
 type ForestIndex struct {
 	// Embedded type
 	*LshSettings
@@ -69,7 +85,7 @@ func NewLshForest(dim, l, m int, w float64) *ForestIndex {
 	}
 }
 
-// Inserts a point into the index.
+// Insert adds a point into the LSH Forest index.
 func (index *ForestIndex) Insert(point Point, id int) {
 	// Apply hash functions.
 	hvs := index.Hash(point)
@@ -78,7 +94,6 @@ func (index *ForestIndex) Insert(point Point, id int) {
 	}
 }
 
-/*
 // Query searches for candidate keys given the signature
 // and writes them to an output channel
 func (index *ForestIndex) Query(q Point, out chan int) {
@@ -87,13 +102,11 @@ func (index *ForestIndex) Query(q Point, out chan int) {
 	// Keep track of keys seen
 	seens := make(map[int]bool)
 	for i, tree := range index.trees {
-		if candidates, exist := table[hvs[i]]; exist {
-			for _, id := range candidates {
-				if _, seen := seens[id]; !seen {
-					seens[id] = true
-					out <- id
-				}
+		for candidate := range tree.lookup(hvs[i]) {
+			if _, seen := seens[candidate]; !seen {
+				seens[candidate] = true
+				out <- candidate
 			}
 		}
 	}
-}*/
+}
