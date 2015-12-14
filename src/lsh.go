@@ -13,7 +13,7 @@ const (
 type TableKey string
 
 // Value is an index into the input dataset.
-type Value int
+type Value []int
 
 type LshSettings struct {
 	// Dimensionality of the input data.
@@ -47,7 +47,7 @@ func NewLshSettings(dim, l, m int, w float64) *LshSettings {
 			b[i][j] = random.Float64() * float64(w)
 		}
 	}
-	return &Lsh{
+	return &LshSettings{
 		dim: dim,
 		l:   l,
 		m:   m,
@@ -58,15 +58,15 @@ func NewLshSettings(dim, l, m int, w float64) *LshSettings {
 }
 
 // Hash returns all combined hash values for all hash tables.
-func (lsh *Lsh) Hash(point Point) []Key {
-	hvs := make([]Key, lsh.l)
+func (lsh *LshSettings) Hash(point Point) []TableKey {
+	hvs := make([]TableKey, lsh.l)
 	for i := range hvs {
 		s := ""
 		for j := 0; j < lsh.m; j++ {
 			hv := (point.dot(lsh.a[i][j]) + lsh.b[i][j]) / lsh.w
 			s += fmt.Sprintf("%.16x", hv)
 		}
-		hvs[i] = s
+		hvs[i] = TableKey(s)
 	}
 	return hvs
 }

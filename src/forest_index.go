@@ -1,12 +1,8 @@
 package lsh
 
-import (
-	"fmt"
-)
-
 type TreeNode struct {
 	// Hash key for this intermediate node. nil/empty for root nodes.
-	hashKey Key
+	hashKey TableKey
 	// A list of indices to the source dataset.
 	indices []int
 	// Child nodes.
@@ -32,14 +28,14 @@ type ForestIndex struct {
 func NewLshForest(dim, l, m int, w float64) *ForestIndex {
 	trees := make([]Tree, l)
 	return &ForestIndex{
-		Lsh:   NewLsh(m, l, dim, w),
-		count: 0,
-		trees: trees,
+		LshSettings: NewLshSettings(m, l, dim, w),
+		count:       0,
+		trees:       trees,
 	}
 }
 
 // Inserts a point into the index.
 func (index *ForestIndex) Insert(point Point) {
 	// Apply hash functions.
-	hvs := index.Hash(point)
+	//hvs := index.Hash(point)
 }
