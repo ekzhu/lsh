@@ -22,12 +22,7 @@ func NewSimpleLsh(dim, l, m int, w float64) *SimpleIndex {
 	}
 	return &SimpleIndex{
 		LshSettings: NewLshSettings(dim, m, l, w),
-		m:           m,
-		l:           l,
-		a:           a,
-		b:           b,
-		w:           w,
-		dim:         dim,
+		count:       0,
 		tables:      tables,
 	}
 }
