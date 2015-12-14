@@ -9,19 +9,12 @@ const (
 	rand_seed = 1
 )
 
-func toString(sig minhash.Signature) string {
-	s := ""
-	for _, v := range sig {
-		s += fmt.Sprintf("%.16x", v)
-	}
-	return s
-}
-
 type Key string
 
 // Point is a vector that we are trying to index and query
 type Point []float64
 
+// dot returns the dot product of two Point vectors
 func (p Point) dot(q Point) float64 {
 	s := 0.0
 	for i := 0; i < len(p); i++ {
@@ -33,14 +26,14 @@ func (p Point) dot(q Point) float64 {
 type Lsh struct {
 	m      int
 	l      int
-	w      int
+	w      float64
 	tables [](map[string]([]Key))
-	a      []Point
-	b      []float64
+	a      [][]Point
+	b      [][]float64
 	dim    int
 }
 
-func NewLsh(m, l, w, dim int) *Lsh {
+func NewLsh(m, l, dim int, w float64) *Lsh {
 	tables := make([](map[string]([]Key)), l)
 	for i := range tables {
 		tables[i] = make(map[string]([]Key))
@@ -49,11 +42,11 @@ func NewLsh(m, l, w, dim int) *Lsh {
 	b := make([][]float64, l)
 	random := rand.New(rand.NewSource(rand_seed))
 	for i := range a {
-		a[i] = make([]Point, lsh.m)
-		b[i] = make([]float64, lsh.m)
+		a[i] = make([]Point, m)
+		b[i] = make([]float64, m)
 		for j := range a[i] {
-			a[i][j] = make(Point, lsh.dim)
-			for d := 0; d < lsh.dim; d++ {
+			a[i][j] = make(Point, dim)
+			for d := 0; d < dim; d++ {
 				a[i][j][d] = random.NormFloat64()
 			}
 			b[i][j] = random.Float64() * float64(w)
@@ -64,6 +57,7 @@ func NewLsh(m, l, w, dim int) *Lsh {
 		l:      l,
 		a:      a,
 		b:      b,
+		w:      w,
 		dim:    dim,
 		tables: tables,
 	}
@@ -87,8 +81,8 @@ func (lsh *Lsh) Hash(point Point) []string {
 func (lsh *Lsh) Insert(key Key, point Point) {
 	// Apply hash functions
 	hvs := lsh.Hash(point)
-	for i := range lsh.tables {
-		table := tables[i]
+	// Insert key into all hash tables
+	for i, table := range lsh.tables {
 		if _, exist := table[hvs[i]]; !exist {
 			table[hvs[i]] = make([]Key, 0)
 		}
@@ -104,7 +98,6 @@ func (lsh *Lsh) Query(q Point, out chan Key) {
 	// Keep track of keys seen
 	seens := make(map[Key]bool)
 	for i, table := range lsh.tables {
-		table := tables[i]
 		if candidates, exist := table[hvs[i]]; exist {
 			for _, key := range candidates {
 				if _, seen := seens[key]; !seen {
