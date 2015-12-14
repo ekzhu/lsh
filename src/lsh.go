@@ -9,23 +9,30 @@ const (
 	rand_seed = 1
 )
 
-type Key string
+// Key is a way to index into a table.
+type TableKey string
 
-type Lsh struct {
-	m      int
-	l      int
-	w      float64
-	tables [](map[string]([]Key))
-	a      [][]Point
-	b      [][]float64
-	dim    int
+// Value is an index into the input dataset.
+type Value int
+
+type LshSettings struct {
+	// Dimensionality of the input data.
+	dim int
+	// Number of tables.
+	l int
+	// Number of hash functions for each table.
+	m int
+	// Shared constant for each table.
+	w float64
+
+	// Hash function params for each (l, m).
+	a [][]Point
+	b [][]float64
 }
 
-func NewLsh(m, l, dim int, w float64) *Lsh {
-	tables := make([](map[string]([]Key)), l)
-	for i := range tables {
-		tables[i] = make(map[string]([]Key))
-	}
+// NewLshSettings initializes the LSH settings.
+func NewLshSettings(dim, l, m int, w float64) *LshSettings {
+	// Initialize hash params.
 	a := make([][]Point, l)
 	b := make([][]float64, l)
 	random := rand.New(rand.NewSource(rand_seed))
@@ -41,19 +48,18 @@ func NewLsh(m, l, dim int, w float64) *Lsh {
 		}
 	}
 	return &Lsh{
-		m:      m,
-		l:      l,
-		a:      a,
-		b:      b,
-		w:      w,
-		dim:    dim,
-		tables: tables,
+		dim: dim,
+		l:   l,
+		m:   m,
+		a:   a,
+		b:   b,
+		w:   w,
 	}
 }
 
 // Hash returns all combined hash values for all hash tables
-func (lsh *Lsh) Hash(point Point) []string {
-	hvs := make([]string, lsh.l)
+func (lsh *Lsh) Hash(point Point) []Key {
+	hvs := make([]Key, lsh.l)
 	for i := range hvs {
 		s := ""
 		for j := 0; j < lsh.m; j++ {
