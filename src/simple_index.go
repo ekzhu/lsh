@@ -28,7 +28,7 @@ func NewSimpleLsh(dim, l, m int, w float64) *SimpleIndex {
 }
 
 // Insert adds a new key to the LSH
-func (index *SimpleIndex) Insert(key Key, point Point) {
+func (index *SimpleIndex) Insert(point Point, value Value) {
 	// Apply hash functions
 	hvs := index.Hash(point)
 	// Insert key into all hash tables
@@ -42,7 +42,7 @@ func (index *SimpleIndex) Insert(key Key, point Point) {
 
 // Query searches for candidate keys given the signature
 // and writes them to an output channel
-func (index *SimpleIndex) Query(q Point, out chan Key) {
+func (index *SimpleIndex) Query(q Point, out chan Value) {
 	// Apply hash functions
 	hvs := index.Hash(q)
 	// Keep track of keys seen

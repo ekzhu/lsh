@@ -22,7 +22,7 @@ type Tree struct {
 
 type ForestIndex struct {
 	// Embedded type
-	*Lsh
+	*LshSettings
 	// Number of leaves in the tree.
 	count int
 	// Trees.
@@ -40,5 +40,6 @@ func NewLshForest(dim, l, m int, w float64) *ForestIndex {
 
 // Inserts a point into the index.
 func (index *ForestIndex) Insert(point Point) {
-
+	// Apply hash functions.
+	hvs := index.Hash(point)
 }
