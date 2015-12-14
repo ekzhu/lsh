@@ -1,7 +1,7 @@
 package lsh
 
 import (
-	"fmt"
+	"math"
 	"math/rand"
 )
 
@@ -10,7 +10,7 @@ const (
 )
 
 // Key is a way to index into a table.
-type TableKey string
+type TableKey []int
 
 // Value is an index into the input dataset.
 type Value []int
@@ -61,12 +61,12 @@ func NewLshSettings(dim, l, m int, w float64) *LshSettings {
 func (lsh *LshSettings) Hash(point Point) []TableKey {
 	hvs := make([]TableKey, lsh.l)
 	for i := range hvs {
-		s := ""
+		s := make(TableKey, lsh.m)
 		for j := 0; j < lsh.m; j++ {
 			hv := (point.dot(lsh.a[i][j]) + lsh.b[i][j]) / lsh.w
-			s += fmt.Sprintf("%.16x", hv)
+			s[j] = int(math.Floor(hv))
 		}
-		hvs[i] = TableKey(s)
+		hvs[i] = s
 	}
 	return hvs
 }

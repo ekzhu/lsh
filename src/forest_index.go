@@ -37,5 +37,6 @@ func NewLshForest(dim, l, m int, w float64) *ForestIndex {
 // Inserts a point into the index.
 func (index *ForestIndex) Insert(point Point) {
 	// Apply hash functions.
-	//hvs := index.Hash(point)
+	//	hvs := index.Hash(point)
+
 }
