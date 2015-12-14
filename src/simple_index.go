@@ -1,7 +1,13 @@
 package lsh
 
+import (
+	"fmt"
+)
+
+type SimpleIndexKey string
+
 // A table in the simple index is a lookup from a TableKey to a value.
-type Table map[TableKey]Value
+type Table map[SimpleIndexKey]Value
 
 type SimpleIndex struct {
 	*LshSettings
@@ -23,10 +29,22 @@ func NewSimpleLsh(dim, l, m int, w float64) *SimpleIndex {
 	}
 }
 
+func (index *SimpleIndex) toSimpleKeys(keys []TableKey) []SimpleIndexKey {
+	simpleKeys := make([]SimpleIndexKey, index.l)
+	for i, key := range keys {
+		s := ""
+		for _, hashVal := range key {
+			s += fmt.Sprintf("%.16x", hashVal)
+		}
+		simpleKeys[i] = SimpleIndexKey(s)
+	}
+	return simpleKeys
+}
+
 // Insert adds a new key to the LSH
 func (index *SimpleIndex) Insert(point Point, id int) {
 	// Apply hash functions
-	hvs := index.Hash(point)
+	hvs := index.toSimpleKeys(index.Hash(point))
 	// Insert key into all hash tables
 	for i, table := range index.tables {
 		if _, exist := table[hvs[i]]; !exist {
@@ -40,7 +58,7 @@ func (index *SimpleIndex) Insert(point Point, id int) {
 // and writes them to an output channel
 func (index *SimpleIndex) Query(q Point, out chan int) {
 	// Apply hash functions
-	hvs := index.Hash(q)
+	hvs := index.toSimpleKeys(index.Hash(q))
 	// Keep track of keys seen
 	seens := make(map[int]bool)
 	for i, table := range index.tables {
