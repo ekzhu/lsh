@@ -19,7 +19,7 @@ func (node *TreeNode) recursiveAdd(level int, id int, tableKey TableKey) bool {
 		// Check if next hash exists in children map. If not, create.
 		var next *TreeNode
 		hasNewHash := false
-		if node, ok := node.children[tableKey[level]]; !ok {
+		if nextNode, ok := node.children[tableKey[level]]; !ok {
 			next = &TreeNode{
 				hashKey:  tableKey[level],
 				indices:  make([]int, 0),
@@ -28,7 +28,7 @@ func (node *TreeNode) recursiveAdd(level int, id int, tableKey TableKey) bool {
 			node.children[tableKey[level]] = next
 			hasNewHash = true
 		} else {
-			next = node
+			next = nextNode
 		}
 		// Recurse using next level's hash value.
 		return hasNewHash || next.recursiveAdd(level+1, id, tableKey)
@@ -39,7 +39,7 @@ type Tree struct {
 	// Number of distinct elements in the tree.
 	count int
 	// Pointer to the root node.
-	root TreeNode
+	root *TreeNode
 }
 
 func (tree *Tree) insertIntoTree(id int, tableKey TableKey) {
@@ -50,7 +50,7 @@ func (tree *Tree) insertIntoTree(id int, tableKey TableKey) {
 
 func (tree *Tree) lookup(tableKey TableKey) []int {
 	indices := make([]int, 0)
-	currentNode := &tree.root
+	currentNode := tree.root
 	for level := 0; level < len(tableKey); level++ {
 		if next, ok := currentNode.children[tableKey[level]]; !ok {
 			return indices
@@ -73,14 +73,16 @@ type ForestIndex struct {
 
 func NewLshForest(dim, l, m int, w float64) *ForestIndex {
 	trees := make([]Tree, l)
-	for _, treeRoot := range trees {
-		treeRoot.root = TreeNode{
+	for i, _ := range trees {
+		trees[i].count = 0
+		trees[i].root = &TreeNode{
+			hashKey:  0,
 			indices:  make([]int, 0),
 			children: make(map[int]*TreeNode),
 		}
 	}
 	return &ForestIndex{
-		LshSettings: NewLshSettings(m, l, dim, w),
+		LshSettings: NewLshSettings(dim, l, m, w),
 		trees:       trees,
 	}
 }
