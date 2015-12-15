@@ -33,6 +33,7 @@ func Test_LshForestQuery(t *testing.T) {
 		lsh.Insert(p, i)
 		insertedKeys[i] = i
 	}
+
 	// Use the inserted points as queries, and
 	// verify that we can get back each query itself
 	for i, key := range insertedKeys {

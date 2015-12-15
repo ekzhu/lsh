@@ -1,5 +1,7 @@
 package lsh
 
+import "fmt"
+
 type TreeNode struct {
 	// Hash key for this intermediate node. nil/empty for root nodes.
 	hashKey int
@@ -31,7 +33,29 @@ func (node *TreeNode) recursiveAdd(level int, id int, tableKey TableKey) bool {
 			next = nextNode
 		}
 		// Recurse using next level's hash value.
-		return hasNewHash || next.recursiveAdd(level+1, id, tableKey)
+		recursive := next.recursiveAdd(level+1, id, tableKey)
+		return hasNewHash || recursive
+	}
+}
+
+func tab(times int) {
+	for i := 0; i < times; i++ {
+		fmt.Print("    ")
+	}
+}
+
+func (node *TreeNode) dump(level int) {
+	tab(level)
+	fmt.Printf("{ (%d): indices %o ", node.hashKey, node.indices)
+	if len(node.children) > 0 {
+		fmt.Printf("[\n")
+		for _, v := range node.children {
+			v.dump(level + 1)
+		}
+		tab(level)
+		fmt.Print("] }\n")
+	} else {
+		fmt.Print("}\n")
 	}
 }
 
@@ -51,16 +75,19 @@ func (tree *Tree) insertIntoTree(id int, tableKey TableKey) {
 func (tree *Tree) lookup(tableKey TableKey) []int {
 	indices := make([]int, 0)
 	currentNode := tree.root
+	// fmt.Println(tableKey)
 	for level := 0; level < len(tableKey); level++ {
 		if next, ok := currentNode.children[tableKey[level]]; !ok {
 			return indices
 		} else {
 			currentNode = next
+			// fmt.Printf("Found hash key %d at level %d, current hash %d\n", tableKey[level], level, currentNode.hashKey)
 		}
 	}
-	for child := range currentNode.indices {
+	for _, child := range currentNode.indices {
 		indices = append(indices, child)
 	}
+	// fmt.Printf("Result: %o\n", indices)
 	return indices
 }
 
@@ -92,6 +119,7 @@ func (index *ForestIndex) Insert(point Point, id int) {
 	// Apply hash functions.
 	hvs := index.Hash(point)
 	for treeId, hv := range hvs {
+		// fmt.Printf("Inserting %o\n", hv)
 		index.trees[treeId].insertIntoTree(id, hv)
 	}
 }
@@ -104,11 +132,19 @@ func (index *ForestIndex) Query(q Point, out chan int) {
 	// Keep track of keys seen
 	seens := make(map[int]bool)
 	for i, tree := range index.trees {
-		for candidate := range tree.lookup(hvs[i]) {
+		for _, candidate := range tree.lookup(hvs[i]) {
 			if _, seen := seens[candidate]; !seen {
 				seens[candidate] = true
 				out <- candidate
 			}
 		}
+	}
+}
+
+// Dump prints out the index for debugging
+func (index *ForestIndex) Dump() {
+	for i, tree := range index.trees {
+		fmt.Printf("Tree %d (%d hash values):\n", i, tree.count)
+		tree.root.dump(0)
 	}
 }
