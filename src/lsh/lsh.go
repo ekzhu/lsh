@@ -63,7 +63,7 @@ func (lsh *LshSettings) Hash(point Point) []TableKey {
 	for i := range hvs {
 		s := make(TableKey, lsh.m)
 		for j := 0; j < lsh.m; j++ {
-			hv := (point.dot(lsh.a[i][j]) + lsh.b[i][j]) / lsh.w
+			hv := (point.Dot(lsh.a[i][j]) + lsh.b[i][j]) / lsh.w
 			s[j] = int(math.Floor(hv))
 		}
 		hvs[i] = s

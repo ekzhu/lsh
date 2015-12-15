@@ -14,7 +14,7 @@ func Test_KHeap(t *testing.T) {
 	q := points[0]
 	distances := make([]float64, len(points))
 	for i := range points {
-		distances[i] = points[i].l2(q)
+		distances[i] = points[i].L2(q)
 		c := Candidate{i, distances[i]}
 		heap.Push(h, c)
 		t.Log(c)
@@ -48,7 +48,7 @@ func Test_Knn(t *testing.T) {
 	// Build ground truth
 	distances := make([]float64, len(points))
 	for i := range points {
-		distances[i] = points[i].l2(q)
+		distances[i] = points[i].L2(q)
 	}
 	sort.Float64s(distances)
 	t.Log("Ground truth distances", distances[:k])
@@ -63,7 +63,7 @@ func Test_Knn(t *testing.T) {
 		// get the point
 		p := points[id]
 		// get the distance
-		d := p.l2(q)
+		d := p.L2(q)
 		t.Log(d)
 		// check if the distance is indeed within the top k ground truth
 		found := false

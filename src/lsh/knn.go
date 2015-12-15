@@ -70,7 +70,7 @@ func NewKnn(data []Point, ids []int) *Knn {
 func (knn *Knn) Query(q Point, k int, out chan int) {
 	kheap := NewKHeap(k)
 	for i, p := range knn.data {
-		d := p.l2(q)
+		d := p.L2(q)
 		heap.Push(kheap, Candidate{knn.ids[i], d})
 	}
 	for i := range kheap.candidates {
