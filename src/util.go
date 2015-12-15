@@ -14,8 +14,8 @@ const (
 )
 
 type PointParser struct {
-	byteLen int
-	parse   func([]byte) Point
+	ByteLen int
+	Parse   func([]byte) Point
 }
 
 // SelectQueries returns ids of randomly selected queries
@@ -40,6 +40,10 @@ func CountPoint(path string, byteLen int) int {
 	filesize := fi.Size()
 	if int(filesize)%byteLen != 0 {
 		panic("Corrupt data file")
+	}
+	err = f.Close()
+	if err != nil {
+		panic(err.Error())
 	}
 	return int(filesize) / byteLen
 }
@@ -74,7 +78,7 @@ func NewQueryPointIterator(path string, parser *PointParser, indices []int) *Poi
 // NewDataPointIterator returns an iterator for all the points
 // in the data file
 func NewDataPointIterator(path string, parser *PointParser) *PointIterator {
-	n := CountPoint(path, parser.byteLen)
+	n := CountPoint(path, parser.ByteLen)
 	indices := make([]int, n)
 	for i := range indices {
 		indices[i] = i
@@ -99,15 +103,24 @@ func (it *PointIterator) Next() (Point, error) {
 	if len(it.indices) == it.curr {
 		return nil, errors.New("Empty result")
 	}
-	b := make([]byte, it.parser.byteLen)
-	_, err := it.file.ReadAt(b, int64(it.indices[it.curr]*it.parser.byteLen))
+	b := make([]byte, it.parser.ByteLen)
+	_, err := it.file.ReadAt(b, int64(it.indices[it.curr]*it.parser.ByteLen))
 	if err != nil {
 		panic(err.Error())
 	}
 	// Parse the bytes into a Point
-	p := it.parser.parse(b)
+	p := it.parser.Parse(b)
 	it.curr += 1
 	return p, nil
+}
+
+// Close releases resources used by the iterator
+func (it *PointIterator) Close() {
+	err = it.file.Close()
+	if err != nil {
+		panic(err.Error())
+	}
+	it.indices = nil
 }
 
 func LoadJson(file string, v interface{}) {

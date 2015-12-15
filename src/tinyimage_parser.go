@@ -10,8 +10,8 @@ const (
 // http://horatio.cs.nyu.edu/mit/tiny/data/index.html
 func NewTinyImagePointParser() *PointParser {
 	return &PointParser{
-		byteLen: dim,
-		parse:   ParseTinyImagePoint,
+		ByteLen: dim,
+		Parse:   ParseTinyImagePoint,
 	}
 }
 

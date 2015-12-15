@@ -26,7 +26,7 @@ func Test_CountPoint(t *testing.T) {
 
 func Test_PointIterator(t *testing.T) {
 	parser := NewTinyImagePointParser()
-	n := CountPoint(path, parser.byteLen)
+	n := CountPoint(path, parser.ByteLen)
 	it := NewDataPointIterator(path, parser)
 	p, err := it.Next()
 	for err == nil {
