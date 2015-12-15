@@ -17,7 +17,7 @@ func floatToIntPoint(p Point) []int {
 }
 
 func Test_CountPoint(t *testing.T) {
-	n := CountPoint(path)
+	n := CountPoint(path, 3072)
 	if n != 100 {
 		t.Error("Should have 100 points in the test dataset")
 	}
@@ -25,15 +25,16 @@ func Test_CountPoint(t *testing.T) {
 }
 
 func Test_PointIterator(t *testing.T) {
-	n := CountPoint(path)
-	it := NewDataPointIterator(path)
+	parser := NewTinyImagePointParser()
+	n := CountPoint(path, parser.byteLen)
+	it := NewDataPointIterator(path, parser)
 	p, err := it.Next()
 	for err == nil {
 		t.Log(p)
 		p, err = it.Next()
 	}
 	ids := SelectQueries(n, 10)
-	it = NewQueryPointIterator(path, ids)
+	it = NewQueryPointIterator(path, parser, ids)
 	p, err = it.Next()
 	for err == nil {
 		t.Log(p)

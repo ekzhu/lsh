@@ -1,7 +1,6 @@
 package lsh
 
 import (
-	"encoding/binary"
 	"errors"
 	"math/rand"
 	"os"
@@ -10,9 +9,12 @@ import (
 
 const (
 	randomSeed = 1
-	dim        = 3072
-	intsize    = 1
 )
+
+type PointParser struct {
+	byteLen int
+	parse   func([]byte) Point
+}
 
 // SelectQueries returns ids of randomly selected queries
 // n is the total number data points
@@ -24,7 +26,7 @@ func SelectQueries(n, nq int) []int {
 
 // CountPoint return the number of points stored in the serialized
 // data file
-func CountPoint(path string) int {
+func CountPoint(path string, byteLen int) int {
 	f, err := os.Open(path)
 	if err != nil {
 		panic(err.Error())
@@ -34,16 +36,14 @@ func CountPoint(path string) int {
 		panic(err.Error())
 	}
 	filesize := fi.Size()
-	unitByteSize := dim * intsize
-	if int(filesize)%unitByteSize != 0 {
+	if int(filesize)%byteLen != 0 {
 		panic("Corrupt data file")
 	}
-	return int(filesize) / unitByteSize
+	return int(filesize) / byteLen
 }
 
 type PointIterator struct {
-	dim     int   // number of dimensions of a point
-	intsize int   // the size of an integer in the serialized format in bytes
+	parser  *PointParser
 	indices []int // indices of the points to visit
 	curr    int   // the current index of the indices
 	file    *os.File
@@ -53,7 +53,7 @@ type PointIterator struct {
 // NewQueryPointIterator returns an iterator for all the query points
 // in the data file.
 // indices are the indices of the queries in the data file
-func NewQueryPointIterator(path string, indices []int) *PointIterator {
+func NewQueryPointIterator(path string, parser *PointParser, indices []int) *PointIterator {
 	file, err := os.Open(path)
 	if err != nil {
 		panic(err.Error())
@@ -61,8 +61,7 @@ func NewQueryPointIterator(path string, indices []int) *PointIterator {
 	file.Seek(0, 0)
 	sort.Ints(indices)
 	return &PointIterator{
-		dim:     dim,
-		intsize: intsize,
+		parser:  parser,
 		indices: indices,
 		curr:    0,
 		file:    file,
@@ -72,8 +71,8 @@ func NewQueryPointIterator(path string, indices []int) *PointIterator {
 
 // NewDataPointIterator returns an iterator for all the points
 // in the data file
-func NewDataPointIterator(path string) *PointIterator {
-	n := CountPoint(path)
+func NewDataPointIterator(path string, parser *PointParser) *PointIterator {
+	n := CountPoint(path, parser.byteLen)
 	indices := make([]int, n)
 	for i := range indices {
 		indices[i] = i
@@ -85,8 +84,7 @@ func NewDataPointIterator(path string) *PointIterator {
 	file.Seek(0, 0)
 	sort.Ints(indices)
 	return &PointIterator{
-		dim:     dim,
-		intsize: intsize,
+		parser:  parser,
 		indices: indices,
 		curr:    0,
 		file:    file,
@@ -99,29 +97,13 @@ func (it *PointIterator) Next() (Point, error) {
 	if len(it.indices) == it.curr {
 		return nil, errors.New("Empty result")
 	}
-	unitByteSize := it.dim * it.intsize
-	b := make([]byte, unitByteSize)
-	_, err := it.file.ReadAt(b, int64(it.indices[it.curr]*unitByteSize))
+	b := make([]byte, it.parser.byteLen)
+	_, err := it.file.ReadAt(b, int64(it.indices[it.curr]*it.parser.byteLen))
 	if err != nil {
 		panic(err.Error())
 	}
 	// Parse the bytes into a Point
-	p := make(Point, it.dim)
-	for i := range p {
-		switch it.intsize {
-		case 1:
-			p[i] = float64(int(b[i]))
-			break
-		case 2:
-			p[i] = float64(int(binary.LittleEndian.Uint16(b[i*2 : (i+1)*2])))
-			break
-		case 4:
-			p[i] = float64(int(binary.LittleEndian.Uint32(b[i*4 : (i+1)*4])))
-			break
-		default:
-			panic("Do not support intsize")
-		}
-	}
+	p := it.parser.parse(b)
 	it.curr += 1
 	return p, nil
 }
