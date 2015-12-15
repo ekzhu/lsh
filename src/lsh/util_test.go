@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	path = "../data/tiny_images_small.bin"
+	path = "../../data/tiny_images_small.bin"
 )
 
 func floatToIntPoint(p Point) []int {
