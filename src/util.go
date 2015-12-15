@@ -116,7 +116,7 @@ func (it *PointIterator) Next() (Point, error) {
 
 // Close releases resources used by the iterator
 func (it *PointIterator) Close() {
-	err = it.file.Close()
+	err := it.file.Close()
 	if err != nil {
 		panic(err.Error())
 	}
