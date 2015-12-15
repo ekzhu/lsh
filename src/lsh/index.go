@@ -2,13 +2,13 @@ package lsh
 
 import "sync"
 
-type QueryFunc func(Point) QueryResult
+type QueryFunc func(DataPoint) QueryResult
 
 func ParallelQueryIndex(queryIter *PointIterator, queryFunc QueryFunc,
 	nWorker int) QueryResults {
 
 	// Input Thread
-	queries := make(chan Point)
+	queries := make(chan DataPoint)
 	go func() {
 		p, err := queryIter.Next()
 		for err == nil {

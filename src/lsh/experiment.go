@@ -2,6 +2,13 @@ package lsh
 
 import "sort"
 
+// DataPoint is a wrapper for Point for experiments
+// as it involes the id of the points
+type DataPoint struct {
+	Id    int
+	Point Point
+}
+
 type Neighbour struct {
 	Id       int     `json:"id"`
 	Distance float64 `json:"distance"`

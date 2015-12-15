@@ -99,19 +99,20 @@ func NewDataPointIterator(path string, parser *PointParser) *PointIterator {
 }
 
 // Next returns the next point in the data file
-func (it *PointIterator) Next() (Point, error) {
+func (it *PointIterator) Next() (DataPoint, error) {
 	if len(it.indices) == it.curr {
-		return nil, errors.New("Empty result")
+		return DataPoint{-1, nil}, errors.New("Empty result")
 	}
+	id := it.indices[it.curr]
 	b := make([]byte, it.parser.ByteLen)
-	_, err := it.file.ReadAt(b, int64(it.indices[it.curr]*it.parser.ByteLen))
+	_, err := it.file.ReadAt(b, int64(id*it.parser.ByteLen))
 	if err != nil {
 		panic(err.Error())
 	}
 	// Parse the bytes into a Point
 	p := it.parser.Parse(b)
 	it.curr += 1
-	return p, nil
+	return DataPoint{id, p}, nil
 }
 
 // Close releases resources used by the iterator
