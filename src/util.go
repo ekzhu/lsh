@@ -1,7 +1,9 @@
 package lsh
 
 import (
+	"encoding/json"
 	"errors"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"sort"
@@ -106,4 +108,26 @@ func (it *PointIterator) Next() (Point, error) {
 	p := it.parser.parse(b)
 	it.curr += 1
 	return p, nil
+}
+
+func LoadJson(file string, v interface{}) {
+	buffer, err := ioutil.ReadFile(file)
+	if err != nil {
+		panic(err.Error())
+	}
+	err = json.Unmarshal(buffer, v)
+	if err != nil {
+		panic(err.Error())
+	}
+}
+
+func DumpJson(file string, v interface{}) {
+	buffer, err := json.Marshal(v)
+	if err != nil {
+		panic(err.Error())
+	}
+	err = ioutil.WriteFile(file, buffer, 0777)
+	if err != nil {
+		panic(err.Error())
+	}
 }
