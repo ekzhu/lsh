@@ -1,6 +1,9 @@
 package lsh
 
-import "container/heap"
+import (
+	"container/heap"
+	"time"
+)
 
 type Candidate struct {
 	id       int
@@ -76,4 +79,55 @@ func (knn *Knn) Query(q Point, k int, out chan int) {
 	for i := range kheap.candidates {
 		out <- kheap.candidates[i].id
 	}
+}
+
+// RunKnn executes the KNN experiment
+func RunKnn(datafile, output string, k, nQuery, nWorker int, parser *PointParser) {
+	// Load data
+	nData := CountPoint(datafile, parser.ByteLen)
+	iter := NewDataPointIterator(datafile, parser)
+	data := make([]Point, nData)
+	ids := make([]int, nData)
+	for i := 0; i < nData; i++ {
+		p, err := iter.Next()
+		if err != nil {
+			panic(err.Error())
+		}
+		data[i] = p.Point
+		ids[i] = p.Id
+	}
+
+	// Run Knn
+	knn := NewKnn(data, ids)
+	queryFunc := func(q DataPoint) QueryResult {
+		start := time.Now()
+		out := make(chan int)
+		go func() {
+			knn.Query(q.Point, k, out)
+			close(out)
+		}()
+		r := make([]int, 0)
+		for i := range out {
+			r = append(r, i)
+		}
+		dur := time.Since(start)
+		ns := make(Neighbours, len(r))
+		for i := range r {
+			ns[i] = Neighbour{
+				Id:       r[i],
+				Distance: q.Point.L2(data[i]),
+			}
+		}
+		return QueryResult{
+			QueryId:    q.Id,
+			Neighbours: ns,
+			Time:       float64(dur) / float64(time.Millisecond),
+		}
+	}
+	// Select queries
+	queryIds := SelectQueries(nData, nQuery)
+	iter = NewQueryPointIterator(datafile, parser, queryIds)
+	// Run queries in parallel
+	results := ParallelQueryIndex(iter, queryFunc, nWorker)
+	DumpJson(output, results)
 }
