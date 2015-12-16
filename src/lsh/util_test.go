@@ -5,7 +5,8 @@ import (
 )
 
 const (
-	path = "../../data/tiny_images_small.bin"
+	path     = "../../data/tiny_images_small.bin"
+	gistPath = "../../data/tiny_gist_small.bin"
 )
 
 func floatToIntPoint(p Point) []int {
@@ -22,10 +23,33 @@ func Test_CountPoint(t *testing.T) {
 		t.Error("Should have 100 points in the test dataset")
 	}
 	t.Log(n)
+	n = CountPoint(gistPath, 1536)
+	if n != 100 {
+		t.Error("Should have 100 points in the test dataset")
+	}
+	t.Log(n)
 }
 
 func Test_PointIterator(t *testing.T) {
 	parser := NewTinyImagePointParser()
+	n := CountPoint(path, parser.ByteLen)
+	it := NewDataPointIterator(path, parser)
+	p, err := it.Next()
+	for err == nil {
+		t.Log(p)
+		p, err = it.Next()
+	}
+	ids := SelectQueries(n, 10)
+	it = NewQueryPointIterator(path, parser, ids)
+	p, err = it.Next()
+	for err == nil {
+		t.Log(p)
+		p, err = it.Next()
+	}
+}
+
+func Test_GistPointIterator(t *testing.T) {
+	parser := NewTinyImageGistParser()
 	n := CountPoint(path, parser.ByteLen)
 	it := NewDataPointIterator(path, parser)
 	p, err := it.Next()
