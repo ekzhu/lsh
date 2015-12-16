@@ -97,3 +97,11 @@ func Analysis(qr, gt QueryResults) (ar *AnalysisResult) {
 	}
 	return ar
 }
+
+func RunAnalysis(resultFile, groundTruthFile, output string) {
+	var r, g QueryResults
+	LoadJson(resultFile, &r)
+	LoadJson(groundTruthFile, &g)
+	a := Analysis(r, g)
+	DumpJson(output, a)
+}
