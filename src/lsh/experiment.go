@@ -1,6 +1,9 @@
 package lsh
 
-import "sort"
+import (
+	"math"
+	"sort"
+)
 
 // DataPoint is a wrapper for Point for experiments
 // as it involes the id of the points
@@ -60,7 +63,12 @@ func ErrorRatio(ann, groundTruth QueryResult) float64 {
 	ratio := 0.0
 	for i, n := range groundTruth.Neighbours {
 		d := n.Distance
-		dAnn := ann.Neighbours[i].Distance
+		var dAnn float64
+		if i >= len(ann.Neighbours) {
+			dAnn = float64(math.MaxFloat32)
+		} else {
+			dAnn = ann.Neighbours[i].Distance
+		}
 		if d == 0.0 {
 			ratio += 1.0
 		} else {
