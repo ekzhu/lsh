@@ -92,3 +92,38 @@ func Test_LshForestParallelQuery(t *testing.T) {
 	for _ = range out {
 	}
 }
+
+func Test_LshForestQueryK(t *testing.T) {
+	lsh := NewLshForest(100, 5, 5, 5.0)
+	points := randomPoints(10, 100, 32.0)
+	insertedKeys := make([]int, 10)
+	for i, p := range points {
+		lsh.Insert(p, i)
+		insertedKeys[i] = i
+	}
+
+	// Query a single point, should obtain back the entire index.
+	result := make(chan int)
+	go func() {
+		lsh.QueryK(points[0], 10, result)
+		close(result)
+	}()
+	actual := make([]int, 0)
+	for key := range result {
+		actual = append(actual, key)
+	}
+
+	// Use the inserted points as queries, and
+	// verify that we can get back each query itself
+	for _, key := range insertedKeys {
+		found := false
+		for foundKey := range actual {
+			if foundKey == key {
+				found = true
+			}
+		}
+		if !found {
+			t.Error("Query fail")
+		}
+	}
+}

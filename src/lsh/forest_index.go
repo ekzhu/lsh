@@ -72,11 +72,11 @@ func (tree *Tree) insertIntoTree(id int, tableKey TableKey) {
 	}
 }
 
-func (tree *Tree) lookup(tableKey TableKey) []int {
+func (tree *Tree) lookup(maxLevel int, tableKey TableKey) []int {
 	indices := make([]int, 0)
 	currentNode := tree.root
 	// fmt.Println(tableKey)
-	for level := 0; level < len(tableKey); level++ {
+	for level := 0; level < len(tableKey) && level < maxLevel; level++ {
 		if next, ok := currentNode.children[tableKey[level]]; !ok {
 			return indices
 		} else {
@@ -84,8 +84,20 @@ func (tree *Tree) lookup(tableKey TableKey) []int {
 			// fmt.Printf("Found hash key %d at level %d, current hash %d\n", tableKey[level], level, currentNode.hashKey)
 		}
 	}
-	for _, child := range currentNode.indices {
-		indices = append(indices, child)
+
+	// Grab all indices of nodes descendent from the current node.
+	queue := []*TreeNode{currentNode}
+	for len(queue) > 0 {
+		// Add node's indices to main list.
+		indices = append(indices, queue[0].indices...)
+
+		// Add children.
+		for _, child := range queue[0].children {
+			queue = append(queue, child)
+		}
+
+		// Done with head.
+		queue = queue[1:]
 	}
 	// fmt.Printf("Result: %o\n", indices)
 	return indices
@@ -124,20 +136,46 @@ func (index *ForestIndex) Insert(point Point, id int) {
 	}
 }
 
+// Helper that queries all trees and returns an array of distinct indices.
+func (index *ForestIndex) queryHelper(maxLevel int, tableKeys []TableKey) []int {
+	// Keep track of keys seen
+	indices := make([]int, 0)
+	seens := make(map[int]bool)
+	for i, tree := range index.trees {
+		for _, candidate := range tree.lookup(maxLevel, tableKeys[i]) {
+			if _, seen := seens[candidate]; !seen {
+				seens[candidate] = true
+				indices = append(indices, candidate)
+			}
+		}
+	}
+	return indices
+}
+
 // Query searches for candidate keys given the signature
 // and writes them to an output channel
 func (index *ForestIndex) Query(q Point, out chan int) {
 	// Apply hash functions
 	hvs := index.Hash(q)
-	// Keep track of keys seen
-	seens := make(map[int]bool)
-	for i, tree := range index.trees {
-		for _, candidate := range tree.lookup(hvs[i]) {
-			if _, seen := seens[candidate]; !seen {
-				seens[candidate] = true
-				out <- candidate
-			}
+	for _, candidate := range index.queryHelper(index.LshSettings.m, hvs) {
+		out <- candidate
+	}
+}
+
+// QueryK queries for the top k approximate closest neighbours.
+func (index *ForestIndex) QueryK(q Point, k int, out chan int) {
+	// Apply hash functions
+	hvs := index.Hash(q)
+	candidates := make([]int, 0)
+	for maxLevels := index.LshSettings.m; maxLevels >= 0; maxLevels-- {
+		candidates = index.queryHelper(maxLevels, hvs)
+		// Enough candidates at this level, so we can rank and return.
+		if len(candidates) >= k {
+			break
 		}
+	}
+	for _, candidate := range candidates {
+		out <- candidate
 	}
 }
 
