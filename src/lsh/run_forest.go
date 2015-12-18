@@ -34,7 +34,7 @@ func RunForest(datafile, output string,
 		start := time.Now()
 		out := make(chan int)
 		go func() {
-			forest.Query(q.Point, out)
+			forest.QueryK(q.Point, k, out)
 			close(out)
 		}()
 		r := make([]int, 0)
