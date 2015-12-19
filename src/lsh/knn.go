@@ -52,7 +52,8 @@ func (h *KHeap) Pop() interface{} {
 }
 
 func NewKHeap(k int) *KHeap {
-	return &KHeap{k, make([]Candidate, 0)}
+	h := make([]Candidate, 0)
+	return &KHeap{k, h}
 }
 
 type Knn struct {
@@ -72,6 +73,7 @@ func NewKnn(data []Point, ids []int) *Knn {
 // distance.
 func (knn *Knn) Query(q Point, k int, out chan int) {
 	kheap := NewKHeap(k)
+	heap.Init(kheap)
 	for i, p := range knn.data {
 		d := p.L2(q)
 		heap.Push(kheap, Candidate{knn.ids[i], d})
