@@ -1,9 +1,15 @@
 package lsh
 
+// perturbation is a vector indicating how to perturb a vector.
+type perturbation []int
+
 type MultiprobeIndex struct {
 	*SimpleIndex
 	// A list of perturbations that will be used for lookups.
-	probeSeq []TableKey
+	//probeSeq []TableKey
+
+	// The scores of perturbation values.
+	scores []float64
 }
 
 func NewMultiprobeLsh(dim, l, m int, w float64) *MultiprobeIndex {
@@ -15,8 +21,15 @@ func NewMultiprobeLsh(dim, l, m int, w float64) *MultiprobeIndex {
 }
 
 func (index *MultiprobeIndex) initProbeSequence() {
-	// TODO(cmei): Initialize sequence.
-	index.probeSeq = make([]TableKey, 0)
+	m := index.SimpleIndex.LshSettings.m
+	index.scores = make([]float64, 2*m)
+	// Use j's starting from 1 to match the paper.
+	for j := 1; j <= m; j++ {
+		index.scores[j-1] = float64(j*(j+1)) / float64(4*(m+1)*(m+2))
+	}
+	for j := m + 1; j <= 2*m; j++ {
+		index.scores[j-1] = 1 - float64(2*m+1-j)/float64(m+1) + float64((2*m+1-j)*(2*m+2-j))/float64(4*(m+1)*(m+2))
+	}
 }
 
 func (index *MultiprobeIndex) Insert(point Point, id int) {
