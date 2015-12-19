@@ -52,7 +52,8 @@ func (h *KHeap) Pop() interface{} {
 }
 
 func NewKHeap(k int) *KHeap {
-	return &KHeap{k, make([]Candidate, 0)}
+	h := make([]Candidate, 0)
+	return &KHeap{k, h}
 }
 
 type Knn struct {
@@ -72,6 +73,7 @@ func NewKnn(data []Point, ids []int) *Knn {
 // distance.
 func (knn *Knn) Query(q Point, k int, out chan int) {
 	kheap := NewKHeap(k)
+	heap.Init(kheap)
 	for i, p := range knn.data {
 		d := p.L2(q)
 		heap.Push(kheap, Candidate{knn.ids[i], d})
@@ -126,6 +128,58 @@ func RunKnn(datafile, output string, k, nQuery, nWorker int, parser *PointParser
 	}
 	// Select queries
 	queryIds := SelectQueries(nData, nQuery)
+	iter = NewQueryPointIterator(datafile, parser, queryIds)
+	// Run queries in parallel
+	results := ParallelQueryIndex(iter, queryFunc, nWorker)
+	DumpJson(output, results)
+}
+
+// RunKnn executes the KNN experiment
+func RunKnnSampleAllPair(datafile, output string, nSample, nWorker int, parser *PointParser) {
+	// Load data
+	nData := CountPoint(datafile, parser.ByteLen)
+	pointIds := SelectQueries(nData, nSample)
+	iter := NewQueryPointIterator(datafile, parser, pointIds)
+	data := make([]Point, nSample)
+	ids := make([]int, nSample)
+	for i := 0; i < nSample; i++ {
+		p, err := iter.Next()
+		if err != nil {
+			panic(err.Error())
+		}
+		data[i] = p.Point
+		ids[i] = p.Id
+	}
+
+	// Run Knn
+	knn := NewKnn(data, ids)
+	queryFunc := func(q DataPoint) QueryResult {
+		start := time.Now()
+		out := make(chan int)
+		go func() {
+			knn.Query(q.Point, nSample, out)
+			close(out)
+		}()
+		r := make([]int, 0)
+		for i := range out {
+			r = append(r, i)
+		}
+		dur := time.Since(start)
+		ns := make(Neighbours, len(r))
+		for i := range r {
+			ns[i] = Neighbour{
+				Id:       r[i],
+				Distance: q.Point.L2(data[i]),
+			}
+		}
+		return QueryResult{
+			QueryId:    q.Id,
+			Neighbours: ns,
+			Time:       float64(dur) / float64(time.Millisecond),
+		}
+	}
+	// Select queries
+	queryIds := SelectQueries(nData, nSample)
 	iter = NewQueryPointIterator(datafile, parser, queryIds)
 	// Run queries in parallel
 	results := ParallelQueryIndex(iter, queryFunc, nWorker)
