@@ -4,74 +4,7 @@ import (
 	"container/heap"
 )
 
-// perturbSetHeap is a min-heap of perturbSetPairs.
-type perturbSetHeap []perturbSetPair
-
 type perturbSet map[int]bool
-
-// A pair of perturbation set and its score.
-type perturbSetPair struct {
-	ps    perturbSet
-	score float64
-}
-
-func (h perturbSetHeap) Len() int           { return len(h) }
-func (h perturbSetHeap) Less(i, j int) bool { return h[i].score < h[j].score }
-func (h perturbSetHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
-
-func (h *perturbSetHeap) Push(x interface{}) {
-	// Push and Pop use pointer receivers because they modify the slice's length,
-	// not just its contents.
-	*h = append(*h, x.(perturbSetPair))
-}
-
-func (h *perturbSetHeap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	*h = old[0 : n-1]
-	return x
-}
-
-type MultiprobeIndex struct {
-	*SimpleIndex
-	// A list of perturbations that will be used for lookups.
-	probeSeq []TableKey
-
-	// The scores of perturbation values.
-	scores []float64
-
-	perturbSets []perturbSet
-}
-
-func NewMultiprobeLsh(dim, l, m int, w float64) *MultiprobeIndex {
-	index := &MultiprobeIndex{
-		SimpleIndex: NewSimpleLsh(dim, l, m, w),
-	}
-	index.initProbeSequence()
-	return index
-}
-
-func (index *MultiprobeIndex) initProbeSequence() {
-	m := index.SimpleIndex.LshSettings.m
-	index.scores = make([]float64, 2*m)
-	// Use j's starting from 1 to match the paper.
-	for j := 1; j <= m; j++ {
-		index.scores[j-1] = float64(j*(j+1)) / float64(4*(m+1)*(m+2))
-	}
-	for j := m + 1; j <= 2*m; j++ {
-		index.scores[j-1] = 1 - float64(2*m+1-j)/float64(m+1) + float64((2*m+1-j)*(2*m+2-j))/float64(4*(m+1)*(m+2))
-	}
-	index.genPerturbSets()
-}
-
-func (index *MultiprobeIndex) getScore(ps *perturbSet) float64 {
-	score := 0.0
-	for j := range *ps {
-		score += index.scores[j-1]
-	}
-	return score
-}
 
 func (ps perturbSet) isValid(m int) bool {
 	for key := range ps {
@@ -114,25 +47,103 @@ func (ps perturbSet) expand() perturbSet {
 	return ps
 }
 
-func (index *MultiprobeIndex) genPerturbSets(t int) {
+// A pair of perturbation set and its score.
+type perturbSetPair struct {
+	ps    perturbSet
+	score float64
+}
+
+// perturbSetHeap is a min-heap of perturbSetPairs.
+type perturbSetHeap []perturbSetPair
+
+func (h perturbSetHeap) Len() int           { return len(h) }
+func (h perturbSetHeap) Less(i, j int) bool { return h[i].score < h[j].score }
+func (h perturbSetHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+
+func (h *perturbSetHeap) Push(x interface{}) {
+	// Push and Pop use pointer receivers because they modify the slice's length,
+	// not just its contents.
+	*h = append(*h, x.(perturbSetPair))
+}
+
+func (h *perturbSetHeap) Pop() interface{} {
+	old := *h
+	n := len(old)
+	x := old[n-1]
+	*h = old[0 : n-1]
+	return x
+}
+
+type MultiprobeIndex struct {
+	*SimpleIndex
+	// The size of our probe sequence.
+	t int
+	// A list of perturbations that will be used for lookups.
+	probeSeq []TableKey
+
+	// The scores of perturbation values.
+	scores []float64
+
+	perturbSets []perturbSet
+}
+
+func NewMultiprobeLsh(dim, l, m int, w float64, t int) *MultiprobeIndex {
+	index := &MultiprobeIndex{
+		SimpleIndex: NewSimpleLsh(dim, l, m, w),
+		t:           t,
+	}
+	index.initProbeSequence()
+	return index
+}
+
+func (index *MultiprobeIndex) initProbeSequence() {
+	m := index.SimpleIndex.LshSettings.m
+	index.scores = make([]float64, 2*m)
+	// Use j's starting from 1 to match the paper.
+	for j := 1; j <= m; j++ {
+		index.scores[j-1] = float64(j*(j+1)) / float64(4*(m+1)*(m+2))
+	}
+	for j := m + 1; j <= 2*m; j++ {
+		index.scores[j-1] = 1 - float64(2*m+1-j)/float64(m+1) + float64((2*m+1-j)*(2*m+2-j))/float64(4*(m+1)*(m+2))
+	}
+	index.genPerturbSets()
+}
+
+func (index *MultiprobeIndex) getScore(ps *perturbSet) float64 {
+	score := 0.0
+	for j := range *ps {
+		score += index.scores[j-1]
+	}
+	return score
+}
+
+func (index *MultiprobeIndex) genPerturbSets() {
 	setHeap := make(perturbSetHeap, 1)
-	currentTop := map[int]bool{1: true}
+	start := perturbSet{1: true}
 	setHeap[0] = perturbSetPair{
-		perturbSet: perturbSet,
-		score:      index.getScore(&perturbSet),
+		ps:    start,
+		score: index.getScore(&start),
 	}
 	heap.Init(&setHeap)
-	index.perturbSets = make([]perturbSet, t)
+	index.perturbSets = make([]perturbSet, index.t)
 	m := index.SimpleIndex.LshSettings.m
 
-	for i := 0; i < t; i++ {
+	for i := 0; i < index.t; i++ {
 		for counter := 0; true; counter++ {
 			currentTop := heap.Pop(&setHeap).(perturbSetPair)
-			heap.Push(&setHeap, currentTop.shift())
-			heap.Push(&setHeap, currentTop.expand())
+			nextShift := currentTop.ps.shift()
+			heap.Push(&setHeap, perturbSetPair{
+				ps:    nextShift,
+				score: index.getScore(&nextShift),
+			})
+			nextExpand := currentTop.ps.expand()
+			heap.Push(&setHeap, perturbSetPair{
+				ps:    nextExpand,
+				score: index.getScore(&nextExpand),
+			})
 
-			if currentTop.isValid(m) {
-				index.perturbSet[i] = currentTop
+			if currentTop.ps.isValid(m) {
+				index.perturbSets[i] = currentTop.ps
 				break
 			}
 			if counter >= 2*m {
