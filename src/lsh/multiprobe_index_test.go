@@ -3,11 +3,16 @@ package lsh
 import "testing"
 
 func Test_NewMultiprobeLsh(t *testing.T) {
-	lsh := NewMultiprobeLsh(100, 5, 5, 5.0)
+	lsh := NewMultiprobeLsh(100, 5, 2, 5.0, 64)
 	if len(lsh.SimpleIndex.tables) != 5 {
 		t.Error("Lsh init fail")
 	}
-	t.Error("%o", lsh.scores)
+	t.Logf("Scores %v", lsh.scores)
+	t.Logf("Perturbation sets: %v", lsh.perturbSets)
+	for i, v := range lsh.perturbSets {
+		t.Logf("Set: %d, Score: %f, Set contents: %v", i, lsh.getScore(&v), v)
+	}
+
 }
 
 /*

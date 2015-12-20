@@ -2,6 +2,7 @@ package lsh
 
 import (
 	"container/heap"
+	"fmt"
 )
 
 type perturbSet map[int]bool
@@ -31,7 +32,7 @@ func (ps perturbSet) shift() perturbSet {
 	}
 	delete(next, max)
 	next[max+1] = true
-	return ps
+	return next
 }
 
 func (ps perturbSet) expand() perturbSet {
@@ -44,7 +45,7 @@ func (ps perturbSet) expand() perturbSet {
 		next[k] = true
 	}
 	next[max+1] = true
-	return ps
+	return next
 }
 
 // A pair of perturbation set and its score.
@@ -143,9 +144,11 @@ func (index *MultiprobeIndex) genPerturbSets() {
 			})
 
 			if currentTop.ps.isValid(m) {
+				fmt.Printf("Valid: %v\n", currentTop.ps)
 				index.perturbSets[i] = currentTop.ps
 				break
 			}
+			fmt.Printf("Invalid: %v\n", currentTop.ps)
 			if counter >= 2*m {
 				panic("too many iterations, probably infinite loop!")
 			}
