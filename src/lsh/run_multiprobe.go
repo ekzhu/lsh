@@ -7,7 +7,7 @@ import (
 
 func RunMultiprobe(data []DataPoint, queries []DataPoint,
 	output string,
-	k, nQuery, nWorker int,
+	k, nWorker int,
 	dim, m, l int, w float64, t int) {
 
 	lsh := NewMultiprobeLsh(dim, l, m, w, t)

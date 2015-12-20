@@ -134,21 +134,19 @@ func (it *PointIterator) Close() {
 	it.indices = nil
 }
 
-func LoadData(datafile string, parser *PointParser) ([]Point, []int) {
+func LoadData(datafile string, parser *PointParser) []DataPoint {
 	// Load data
 	nData := CountPoint(datafile, parser.ByteLen)
 	iter := NewDataPointIterator(datafile, parser)
-	data := make([]Point, nData)
-	ids := make([]int, nData)
+	data := make([]DataPoint, nData)
 	for i := 0; i < nData; i++ {
 		p, err := iter.Next()
 		if err != nil {
 			panic(err.Error())
 		}
-		data[i] = p.Point
-		ids[i] = p.Id
+		data[i] = p
 	}
-	return data, ids
+	return data
 }
 
 func LoadJson(file string, v interface{}) {

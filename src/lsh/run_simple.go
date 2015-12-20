@@ -7,7 +7,7 @@ import (
 
 func RunSimple(data []DataPoint, queries []DataPoint,
 	output string,
-	k, nQuery, nWorker int,
+	k, nWorker int,
 	dim, m, l int, w float64) {
 
 	lsh := NewSimpleLsh(dim, l, m, w)
