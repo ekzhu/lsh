@@ -20,6 +20,34 @@ func Test_NewMultiprobeLsh(t *testing.T) {
 
 }
 
+func Test_MultiprobeLshQueryK(t *testing.T) {
+	lsh := NewMultiprobeLsh(100, 5, 5, 5.0, 10)
+	points := randomPoints(10, 100, 32.0)
+	insertedKeys := make([]int, 10)
+	for i, p := range points {
+		lsh.Insert(p, i)
+		insertedKeys[i] = i
+	}
+	// Use the inserted points as queries, and
+	// verify that we can get back each query itself
+	for i, key := range insertedKeys {
+		result := make(chan int)
+		go func() {
+			lsh.QueryK(points[i], 10, result)
+			close(result)
+		}()
+		found := false
+		for foundKey := range result {
+			if foundKey == key {
+				found = true
+			}
+		}
+		if !found {
+			t.Error("Query fail")
+		}
+	}
+}
+
 /*
 func Test_MultiprobeLshQueryK(t *testing.T) {
 	lsh := NewMultiprobeLsh(100, 5, 5, 5.0, 64)

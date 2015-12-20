@@ -236,9 +236,8 @@ func (index *MultiprobeIndex) perturb(baseKey []TableKey, perturbation [][]int) 
 
 func (index *MultiprobeIndex) QueryK(q Point, k int, out chan int) {
 	baseKey := index.Hash(q)
-	candidates := make([]int, 0)
 	seens := make(map[int]bool)
-	for i := 0; i < len(index.perturbVecs)+1 && len(candidates) < k; i++ {
+	for i := 0; i < len(index.perturbVecs)+1 && len(seens) < k; i++ {
 		perturbedTableKeys := baseKey
 		if i != 0 {
 			// Generate new hash key based on perturbation.
@@ -250,7 +249,8 @@ func (index *MultiprobeIndex) QueryK(q Point, k int, out chan int) {
 		// Append new candidates to index.
 		for _, id := range neighbours {
 			if _, seen := seens[id]; !seen {
-				candidates = append(candidates, id)
+				out <- id
+				seens[id] = true
 			}
 		}
 	}
