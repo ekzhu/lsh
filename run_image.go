@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"lsh"
+	"os"
 	"path/filepath"
 )
 
@@ -14,7 +15,7 @@ const (
 
 var (
 	datafile   string
-	knnout     string
+	knnresult  string
 	varloutdir string
 	vartoutdir string
 	nWorker    int
@@ -36,13 +37,14 @@ func init() {
 		"Output directory for experiment with different Ls")
 	flag.StringVar(&vartoutdir, "vartout", "",
 		"Output directory for experiment with different Ts")
+	flag.StringVar(&knnresult, "knnresult", "_knn_image",
+		"Exact k-NN result file, will re-run exact k-NN if not exist")
 	flag.IntVar(&nWorker, "t", 200, "Number of threads for query tests")
 	flag.IntVar(&nQuery, "q", 10, "Number of queries")
 	flag.IntVar(&m, "M", 4, "Size of combined hash function")
 	flag.IntVar(&l, "L", 24, "Number of hash tables")
 	flag.IntVar(&t, "T", 8, "Length of probing sequence in Multi-probe")
 	flag.Float64Var(&w, "W", 3000.0, "projection slot size")
-	knnout = "_knn_image"
 	ls = []int{1, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40}
 	ts = []int{4, 8, 16}
 }
@@ -80,6 +82,17 @@ func analysisFileName(outdir, algorithm, paramName string, paramVal int) string 
 	return fmt.Sprintf("%s_%s", f, "analysis")
 }
 
+func exists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return true, err
+}
+
 func main() {
 	flag.Parse()
 	if vartoutdir == "" || varloutdir == "" {
@@ -90,9 +103,15 @@ func main() {
 	data := lsh.LoadData(datafile, parser)
 	queries := lsh.SelectQueriesAsSubset(data, nQuery)
 
-	// Run exact kNN
-	log.Println("Running exact kNN")
-	lsh.RunKnn(data, queries, knnout, k, nWorker)
+	exist, err := exists(knnresult)
+	if err != nil {
+		panic(err.Error())
+	}
+	if !exist {
+		// Run exact kNN
+		log.Println("Running exact kNN")
+		lsh.RunKnn(data, queries, knnresult, k, nWorker)
+	}
 
 	var analysisResults []string
 
@@ -112,7 +131,7 @@ func main() {
 		result := resultFileName(varloutdir, "basic", "l", l)
 		lsh.RunSimple(data, queries, result, k, nWorker, dim, m, l, w)
 		analysis := analysisFileName(varloutdir, "basic", "l", l)
-		lsh.RunAnalysis(result, knnout, analysis)
+		lsh.RunAnalysis(result, knnresult, analysis)
 		analysisResults = append(analysisResults, analysis)
 	}
 	varlmeta.AnalysisResults = append(varlmeta.AnalysisResults,
@@ -124,7 +143,7 @@ func main() {
 		result := resultFileName(varloutdir, "forest", "l", l)
 		lsh.RunForest(data, queries, result, k, nWorker, dim, m, l, w)
 		analysis := analysisFileName(varloutdir, "forest", "l", l)
-		lsh.RunAnalysis(result, knnout, analysis)
+		lsh.RunAnalysis(result, knnresult, analysis)
 		analysisResults = append(analysisResults, analysis)
 	}
 	varlmeta.AnalysisResults = append(varlmeta.AnalysisResults,
@@ -136,7 +155,7 @@ func main() {
 		result := resultFileName(varloutdir, "multiprobe", "l", l)
 		lsh.RunMultiprobe(data, queries, result, k, nWorker, dim, m, l, w, t)
 		analysis := analysisFileName(varloutdir, "multiprobe", "l", l)
-		lsh.RunAnalysis(result, knnout, analysis)
+		lsh.RunAnalysis(result, knnresult, analysis)
 		analysisResults = append(analysisResults, analysis)
 	}
 	varlmeta.AnalysisResults = append(varlmeta.AnalysisResults,
@@ -159,7 +178,7 @@ func main() {
 		result := resultFileName(vartoutdir, "multiprobe", "t", t)
 		lsh.RunMultiprobe(data, queries, result, k, nWorker, dim, m, l, w, t)
 		analysis := analysisFileName(vartoutdir, "multiprobe", "t", t)
-		lsh.RunAnalysis(result, knnout, analysis)
+		lsh.RunAnalysis(result, knnresult, analysis)
 		analysisResults = append(analysisResults, analysis)
 	}
 	vartmeta.AnalysisResults = append(vartmeta.AnalysisResults,

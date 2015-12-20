@@ -2,6 +2,7 @@ package lsh
 
 import (
 	"fmt"
+	"sync"
 )
 
 type SimpleIndexKey string
@@ -46,12 +47,20 @@ func (index *SimpleIndex) Insert(point Point, id int) {
 	// Apply hash functions
 	hvs := index.toSimpleKeys(index.Hash(point))
 	// Insert key into all hash tables
-	for i, table := range index.tables {
-		if _, exist := table[hvs[i]]; !exist {
-			table[hvs[i]] = make(Value, 0)
-		}
-		table[hvs[i]] = append(table[hvs[i]], id)
+	var wg sync.WaitGroup
+	for i := range index.tables {
+		hv := hvs[i]
+		table := index.tables[i]
+		wg.Add(1)
+		go func(table Table, hv SimpleIndexKey) {
+			if _, exist := table[hv]; !exist {
+				table[hv] = make(Value, 0)
+			}
+			table[hv] = append(table[hv], id)
+			wg.Done()
+		}(table, hv)
 	}
+	wg.Wait()
 }
 
 // Query searches for candidate keys given the signature

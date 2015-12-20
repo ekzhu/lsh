@@ -1,6 +1,9 @@
 package lsh
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 type TreeNode struct {
 	// Hash key for this intermediate node. nil/empty for root nodes.
@@ -130,10 +133,18 @@ func NewLshForest(dim, l, m int, w float64) *ForestIndex {
 func (index *ForestIndex) Insert(point Point, id int) {
 	// Apply hash functions.
 	hvs := index.Hash(point)
-	for treeId, hv := range hvs {
-		// fmt.Printf("Inserting %o\n", hv)
-		index.trees[treeId].insertIntoTree(id, hv)
+	// Parallel insert
+	var wg sync.WaitGroup
+	for i := range index.trees {
+		hv := hvs[i]
+		tree := &(index.trees[i])
+		wg.Add(1)
+		go func(tree *Tree, hv TableKey) {
+			tree.insertIntoTree(id, hv)
+			wg.Done()
+		}(tree, hv)
 	}
+	wg.Wait()
 }
 
 // Helper that queries all trees and returns an array of distinct indices.
