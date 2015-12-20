@@ -2,17 +2,13 @@ package lsh
 
 import (
 	"container/heap"
+	"sort"
 	"time"
 )
 
-type Candidate struct {
-	id       int
-	distance float64
-}
-
 type KHeap struct {
 	k          int
-	candidates []Candidate
+	candidates []Neighbour
 }
 
 func (h KHeap) Len() int {
@@ -22,7 +18,7 @@ func (h KHeap) Len() int {
 func (h KHeap) Less(i, j int) bool {
 	// We want to pop out the candidate with largest distance
 	// so we use greater than here
-	return h.candidates[i].distance > h.candidates[j].distance
+	return h.candidates[i].Distance > h.candidates[j].Distance
 }
 
 func (h KHeap) Swap(i, j int) {
@@ -30,13 +26,13 @@ func (h KHeap) Swap(i, j int) {
 }
 
 func (h *KHeap) Push(x interface{}) {
-	c := x.(Candidate)
+	c := x.(Neighbour)
 	if len(h.candidates) < h.k {
 		h.candidates = append(h.candidates, c)
 		return
 	}
 	// Check if we can still push to the top-k heap when it is full
-	if h.candidates[0].distance > c.distance {
+	if h.candidates[0].Distance > c.Distance {
 		heap.Pop(h)
 		heap.Push(h, c)
 	}
@@ -52,136 +48,83 @@ func (h *KHeap) Pop() interface{} {
 }
 
 func NewKHeap(k int) *KHeap {
-	h := make([]Candidate, 0)
+	h := make([]Neighbour, 0)
 	return &KHeap{k, h}
 }
 
 type Knn struct {
-	data []Point
-	ids  []int
+	points []DataPoint
 }
 
-func NewKnn(data []Point, ids []int) *Knn {
-	if len(data) != len(ids) {
-		panic("Mismatch between size of data and ids")
-	}
-	return &Knn{data, ids}
+func NewKnn(points []DataPoint) *Knn {
+	return &Knn{points}
 }
 
 // Query outputs the top-k closest points from the query point
 // to the chanel out. The sequence of output is NOT sorted by
 // distance.
-func (knn *Knn) Query(q Point, k int, out chan int) {
+func (knn *Knn) Query(q Point, k int, out chan Neighbour) {
 	kheap := NewKHeap(k)
 	heap.Init(kheap)
-	for i, p := range knn.data {
-		d := p.L2(q)
-		heap.Push(kheap, Candidate{knn.ids[i], d})
+	for _, p := range knn.points {
+		d := p.Point.L2(q)
+		heap.Push(kheap, Neighbour{p.Id, d})
 	}
 	for i := range kheap.candidates {
-		out <- kheap.candidates[i].id
+		out <- kheap.candidates[i]
 	}
 }
 
 // RunKnn executes the KNN experiment
-func RunKnn(datafile, output string, k, nQuery, nWorker int, parser *PointParser) {
-	// Load data
-	nData := CountPoint(datafile, parser.ByteLen)
-	iter := NewDataPointIterator(datafile, parser)
-	data := make([]Point, nData)
-	ids := make([]int, nData)
-	for i := 0; i < nData; i++ {
-		p, err := iter.Next()
-		if err != nil {
-			panic(err.Error())
-		}
-		data[i] = p.Point
-		ids[i] = p.Id
-	}
-
-	// Run Knn
-	knn := NewKnn(data, ids)
+func RunKnn(data []DataPoint, queries []DataPoint,
+	output string, k, nWorker int) {
+	knn := NewKnn(data)
 	queryFunc := func(q DataPoint) QueryResult {
 		start := time.Now()
-		out := make(chan int)
+		out := make(chan Neighbour)
 		go func() {
 			knn.Query(q.Point, k, out)
 			close(out)
 		}()
-		r := make([]int, 0)
+		ns := make(Neighbours, 0)
 		for i := range out {
-			r = append(r, i)
+			ns = append(ns, i)
 		}
 		dur := time.Since(start)
-		ns := make(Neighbours, len(r))
-		for i := range r {
-			ns[i] = Neighbour{
-				Id:       r[i],
-				Distance: q.Point.L2(data[i]),
-			}
-		}
+		sort.Sort(ns)
 		return QueryResult{
 			QueryId:    q.Id,
 			Neighbours: ns,
 			Time:       float64(dur) / float64(time.Millisecond),
 		}
 	}
-	// Select queries
-	queryIds := SelectQueries(nData, nQuery)
-	iter = NewQueryPointIterator(datafile, parser, queryIds)
-	// Run queries in parallel
-	results := ParallelQueryIndex(iter, queryFunc, nWorker)
+	results := ParallelQueryIndex(queries, queryFunc, nWorker)
 	DumpJson(output, results)
 }
 
 // RunKnn executes the KNN experiment
-func RunKnnSampleAllPair(datafile, output string, nSample, nWorker int, parser *PointParser) {
-	// Load data
-	nData := CountPoint(datafile, parser.ByteLen)
-	pointIds := SelectQueries(nData, nSample)
-	iter := NewQueryPointIterator(datafile, parser, pointIds)
-	data := make([]Point, nSample)
-	ids := make([]int, nSample)
-	for i := 0; i < nSample; i++ {
-		p, err := iter.Next()
-		if err != nil {
-			panic(err.Error())
-		}
-		data[i] = p.Point
-		ids[i] = p.Id
-	}
-
-	// Run Knn
-	knn := NewKnn(data, ids)
+func RunKnnSampleAllPair(data []DataPoint, output string, nWorker int) {
+	knn := NewKnn(data)
+	nSample := len(data)
 	queryFunc := func(q DataPoint) QueryResult {
 		start := time.Now()
-		out := make(chan int)
+		out := make(chan Neighbour)
 		go func() {
 			knn.Query(q.Point, nSample, out)
 			close(out)
 		}()
-		r := make([]int, 0)
+		ns := make(Neighbours, 0)
 		for i := range out {
-			r = append(r, i)
+			ns = append(ns, i)
 		}
 		dur := time.Since(start)
-		ns := make(Neighbours, len(r))
-		for i := range r {
-			ns[i] = Neighbour{
-				Id:       r[i],
-				Distance: q.Point.L2(data[i]),
-			}
-		}
+		sort.Sort(ns)
 		return QueryResult{
 			QueryId:    q.Id,
 			Neighbours: ns,
 			Time:       float64(dur) / float64(time.Millisecond),
 		}
 	}
-	// Select queries
-	queryIds := SelectQueries(nData, nSample)
-	iter = NewQueryPointIterator(datafile, parser, queryIds)
-	// Run queries in parallel
-	results := ParallelQueryIndex(iter, queryFunc, nWorker)
+	results := ParallelQueryIndex(data, queryFunc, nWorker)
 	DumpJson(output, results)
 }

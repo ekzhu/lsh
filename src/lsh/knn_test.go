@@ -15,7 +15,7 @@ func Test_KHeap(t *testing.T) {
 	distances := make([]float64, len(points))
 	for i := range points {
 		distances[i] = points[i].L2(q)
-		c := Candidate{i, distances[i]}
+		c := Neighbour{i, distances[i]}
 		heap.Push(h, c)
 		t.Log(c)
 		t.Log(h.candidates)
@@ -26,8 +26,8 @@ func Test_KHeap(t *testing.T) {
 	sort.Float64s(distances)
 	topK := make([]float64, k)
 	for i := 0; i < k; i++ {
-		c := heap.Pop(h).(Candidate)
-		topK[i] = c.distance
+		c := heap.Pop(h).(Neighbour)
+		topK[i] = c.Distance
 	}
 	for i := range topK {
 		if topK[i] != distances[k-1-i] {
@@ -40,10 +40,6 @@ func Test_KHeap(t *testing.T) {
 func Test_Knn(t *testing.T) {
 	k := 5
 	points := randomPoints(20, 10, 100.0)
-	ids := make([]int, len(points))
-	for i := range points {
-		ids[i] = i
-	}
 	q := points[0]
 	// Build ground truth
 	distances := make([]float64, len(points))
@@ -52,16 +48,20 @@ func Test_Knn(t *testing.T) {
 	}
 	sort.Float64s(distances)
 	t.Log("Ground truth distances", distances[:k])
+	data := make([]DataPoint, len(points))
+	for i := range points {
+		data[i] = DataPoint{i, points[i]}
+	}
 	// Test Knn query
-	knn := NewKnn(points, ids)
-	out := make(chan int)
+	knn := NewKnn(data)
+	out := make(chan Neighbour)
 	go func() {
 		knn.Query(q, k, out)
 		close(out)
 	}()
-	for id := range out {
+	for n := range out {
 		// get the point
-		p := points[id]
+		p := points[n.Id]
 		// get the distance
 		d := p.L2(q)
 		t.Log(d)

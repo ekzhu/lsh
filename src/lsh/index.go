@@ -4,40 +4,14 @@ import "sync"
 
 type QueryFunc func(DataPoint) QueryResult
 
-func QueryIndex(queryIter *PointIterator, queryFunc QueryFunc) QueryResults {
+func ParallelQueryIndex(input []DataPoint, queryFunc QueryFunc, nWorker int) QueryResults {
 
 	// Input Thread
 	queries := make(chan DataPoint)
 	go func() {
-		p, err := queryIter.Next()
-		for err == nil {
-			queries <- p
-			p, err = queryIter.Next()
+		for _, q := range input {
+			queries <- q
 		}
-		queryIter.Close()
-		close(queries)
-	}()
-
-	results := make(QueryResults, 0)
-	for q := range queries {
-		r := queryFunc(q)
-		results = append(results, r)
-	}
-	return results
-}
-
-func ParallelQueryIndex(queryIter *PointIterator, queryFunc QueryFunc,
-	nWorker int) QueryResults {
-
-	// Input Thread
-	queries := make(chan DataPoint)
-	go func() {
-		p, err := queryIter.Next()
-		for err == nil {
-			queries <- p
-			p, err = queryIter.Next()
-		}
-		queryIter.Close()
 		close(queries)
 	}()
 

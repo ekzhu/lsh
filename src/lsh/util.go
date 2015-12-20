@@ -26,6 +26,16 @@ func SelectQueries(n, nq int) []int {
 	return random.Perm(n)[:nq]
 }
 
+func SelectQueriesAsSubset(data []DataPoint, nQuery int) []DataPoint {
+	random := rand.New(rand.NewSource(randomSeed))
+	indices := random.Perm(len(data))[:nQuery]
+	queries := make([]DataPoint, nQuery)
+	for i, ind := range indices {
+		queries[i] = data[ind]
+	}
+	return queries
+}
+
 // CountPoint return the number of points stored in the serialized
 // data file
 func CountPoint(path string, byteLen int) int {
@@ -122,6 +132,23 @@ func (it *PointIterator) Close() {
 		panic(err.Error())
 	}
 	it.indices = nil
+}
+
+func LoadData(datafile string, parser *PointParser) ([]Point, []int) {
+	// Load data
+	nData := CountPoint(datafile, parser.ByteLen)
+	iter := NewDataPointIterator(datafile, parser)
+	data := make([]Point, nData)
+	ids := make([]int, nData)
+	for i := 0; i < nData; i++ {
+		p, err := iter.Next()
+		if err != nil {
+			panic(err.Error())
+		}
+		data[i] = p.Point
+		ids[i] = p.Id
+	}
+	return data, ids
 }
 
 func LoadJson(file string, v interface{}) {

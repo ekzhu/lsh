@@ -5,29 +5,15 @@ import (
 	"time"
 )
 
-func RunForest(datafile, output string,
+func RunForest(data []DataPoint, queries []DataPoint,
+	output string,
 	k, nQuery, nWorker int,
-	parser *PointParser,
 	dim, m, l int, w float64) {
-
-	// Load data
-	nData := CountPoint(datafile, parser.ByteLen)
-	iter := NewDataPointIterator(datafile, parser)
-	data := make([]Point, nData)
-	ids := make([]int, nData)
-	for i := 0; i < nData; i++ {
-		p, err := iter.Next()
-		if err != nil {
-			panic(err.Error())
-		}
-		data[i] = p.Point
-		ids[i] = p.Id
-	}
 
 	// Build forest index
 	forest := NewLshForest(dim, l, m, w)
-	for i, p := range data {
-		forest.Insert(p, ids[i])
+	for _, p := range data {
+		forest.Insert(p.Point, p.Id)
 	}
 	// Forest query function wrapper
 	queryFunc := func(q DataPoint) QueryResult {
@@ -45,8 +31,10 @@ func RunForest(datafile, output string,
 		ns := make(Neighbours, len(r))
 		for i := range r {
 			ns[i] = Neighbour{
-				Id:       r[i],
-				Distance: q.Point.L2(data[i]),
+				Id: r[i],
+				// We assume the id is equal to the index
+				// of the data point in the input data
+				Distance: q.Point.L2(data[r[i]].Point),
 			}
 		}
 		sort.Sort(ns)
@@ -59,10 +47,7 @@ func RunForest(datafile, output string,
 			Time:       float64(dur) / float64(time.Millisecond),
 		}
 	}
-	// Select queries
-	queryIds := SelectQueries(nData, nQuery)
-	iter = NewQueryPointIterator(datafile, parser, queryIds)
 	// Run queries in parallel
-	results := ParallelQueryIndex(iter, queryFunc, nWorker)
+	results := ParallelQueryIndex(queries, queryFunc, nWorker)
 	DumpJson(output, results)
 }
