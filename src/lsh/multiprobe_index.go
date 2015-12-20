@@ -2,7 +2,7 @@ package lsh
 
 import (
 	"container/heap"
-	"fmt"
+	"math/rand"
 )
 
 type perturbSet map[int]bool
@@ -79,13 +79,17 @@ type MultiprobeIndex struct {
 	*SimpleIndex
 	// The size of our probe sequence.
 	t int
-	// A list of perturbations that will be used for lookups.
-	probeSeq []TableKey
 
 	// The scores of perturbation values.
 	scores []float64
 
 	perturbSets []perturbSet
+
+	// Each hash table has a list of perturbation vectors
+	// each perturbation vector is list of -+ 1 or 0 that will
+	// be applied to the TableKey of the query hash value
+	// t x l x m
+	perturbVecs [][][]int
 }
 
 func NewMultiprobeLsh(dim, l, m int, w float64, t int) *MultiprobeIndex {
@@ -108,6 +112,7 @@ func (index *MultiprobeIndex) initProbeSequence() {
 		index.scores[j-1] = 1 - float64(2*m+1-j)/float64(m+1) + float64((2*m+1-j)*(2*m+2-j))/float64(4*(m+1)*(m+2))
 	}
 	index.genPerturbSets()
+	index.genPerturbVecs()
 }
 
 func (index *MultiprobeIndex) getScore(ps *perturbSet) float64 {
@@ -144,15 +149,53 @@ func (index *MultiprobeIndex) genPerturbSets() {
 			})
 
 			if currentTop.ps.isValid(m) {
-				fmt.Printf("Valid: %v\n", currentTop.ps)
 				index.perturbSets[i] = currentTop.ps
 				break
 			}
-			fmt.Printf("Invalid: %v\n", currentTop.ps)
 			if counter >= 2*m {
 				panic("too many iterations, probably infinite loop!")
 			}
 		}
+	}
+}
+
+func (index *MultiprobeIndex) genPerturbVecs() {
+	// First we need to generate the permutation tables
+	// that maps the ids of the unit perturbation in each
+	// perturbation set to the index of the unit hash
+	// value
+	perms := make([][]int, index.l)
+	for i := range index.tables {
+		random := rand.New(rand.NewSource(int64(i)))
+		perm := random.Perm(index.m)
+		perms[i] = make([]int, index.m*2)
+		for j := 0; j < index.m; j++ {
+			perms[i][j] = perm[j]
+		}
+		for j := 0; j < index.m; j++ {
+			perms[i][j+index.m] = perm[index.m-1-j]
+		}
+	}
+
+	// Generate the vectors
+	index.perturbVecs = make([][][]int, len(index.perturbSets))
+	for i, ps := range index.perturbSets {
+		perTableVecs := make([][]int, index.l)
+		for j := range perTableVecs {
+			vec := make([]int, index.m)
+			for k := range ps {
+				mapped_ind := perms[j][k-1]
+				if k > index.m {
+					// If it is -1
+					vec[mapped_ind] = -1
+				} else {
+					// if it is +1
+					vec[mapped_ind] = 1
+				}
+			}
+			perTableVecs[j] = vec
+		}
+		index.perturbVecs[i] = perTableVecs
 	}
 }
 
@@ -177,22 +220,33 @@ func (index *MultiprobeIndex) queryHelper(tableKeys []TableKey) []int {
 }
 
 // perturb returns the result of applying perturbation on each baseKey.
-func (index *MultiprobeIndex) perturb(baseKey []TableKey, perturbation TableKey) []TableKey {
-	// TODO(cmei): Apply perturbation
-	return baseKey
+func (index *MultiprobeIndex) perturb(baseKey []TableKey, perturbation [][]int) []TableKey {
+	if len(baseKey) != len(perturbation) {
+		panic("Number tables does not match with number of perturb vecs")
+	}
+	perturbedTableKeys := make([]TableKey, len(baseKey))
+	for i, p := range perturbation {
+		perturbedTableKeys[i] = make(TableKey, index.m)
+		for j, h := range baseKey[i] {
+			perturbedTableKeys[i][j] = h + p[j]
+		}
+	}
+	return perturbedTableKeys
 }
 
 func (index *MultiprobeIndex) QueryK(q Point, k int, out chan int) {
 	baseKey := index.Hash(q)
 	candidates := make([]int, 0)
 	seens := make(map[int]bool)
-	for i := 0; i < len(index.probeSeq) && len(candidates) < k; i++ {
-		// Generate new hash key based on perturbation.
-		perturbedKey := index.perturb(baseKey, index.probeSeq[i])
-
+	for i := 0; i < len(index.perturbVecs)+1 && len(candidates) < k; i++ {
+		perturbedTableKeys := baseKey
+		if i != 0 {
+			// Generate new hash key based on perturbation.
+			perturbedTableKeys = index.perturb(baseKey, index.perturbVecs[i-1])
+		}
+		//fmt.Printf("%d: %v\n", i, perturbedTableKeys)
 		// Perform lookup.
-		neighbours := index.queryHelper(perturbedKey)
-
+		neighbours := index.queryHelper(perturbedTableKeys)
 		// Append new candidates to index.
 		for _, id := range neighbours {
 			if _, seen := seens[id]; !seen {
