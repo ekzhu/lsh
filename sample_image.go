@@ -30,10 +30,12 @@ func main() {
 		panic("No datafile given")
 	}
 	parser := lsh.NewTinyImagePointParser()
+	data := lsh.LoadData(datafile, parser)
+	queries := lsh.SelectQueriesAsSubset(data, nSample)
 
 	// Query distance sample
-	lsh.RunKnn(datafile, distOutput, k, nSample, nWorker, parser)
+	lsh.RunKnn(data, queries, distOutput, k, nWorker)
 
 	// All pair distance sample
-	lsh.RunKnnSampleAllPair(datafile, kDistOutput, nSample, nWorker, parser)
+	lsh.RunKnnSampleAllPair(queries, kDistOutput, nWorker)
 }
