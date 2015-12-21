@@ -25,10 +25,12 @@ topks = np.array(topks)
 
 fig, axes = plt.subplots(max_k, 1, figsize=(3, max_k*3))
 for k in range(max_k):
-    param = gamma.fit(topks[:,k])
-    x = scipy.arange(len(topks[:,k])) 
-    pdf_fitted = gamma.pdf(x, *param[:-2], loc=param[-2], scale=param[-1])*len(topks[:,k])
-    #axes[k].hist(topks[:,k], 20)
+    d = topks[:,k]
+    size = len(d)
+    param = gamma.fit(d)
+    x = scipy.arange(int(np.max(d))) 
+    pdf_fitted = gamma.pdf(x, *param[:-2], loc=param[-2], scale=param[-1])*size
     axes[k].plot(pdf_fitted)
+    #axes[k].hist(d, 20, histtype="stepfilled", alpha=0.7)
     axes[k].set_xlim(xmin=0)
 plt.savefig("kth_dist.png")
