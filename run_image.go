@@ -27,26 +27,32 @@ var (
 	t          int
 	ls         []int
 	ts         []int
+	ms         []int
+	ws         []float64
 )
 
 func init() {
-	flag.IntVar(&k, "k", 20, "Number of nearest neighbours")
-	flag.StringVar(&datafile, "d", "./data/tiny_images_small.bin",
+	flag.IntVar(&k, "k", 50, "Number of nearest neighbours")
+	flag.StringVar(&datafile, "d", "./data/tiny_images_10k.bin",
 		"tiny image data file")
 	flag.StringVar(&varloutdir, "varlout", "",
 		"Output directory for experiment with different Ls")
 	flag.StringVar(&vartoutdir, "vartout", "",
 		"Output directory for experiment with different Ts")
-	flag.StringVar(&knnresult, "knnresult", "_knn_image",
+	flag.StringVar(&knnresult, "knnresult", "_knn_image_10k_k_50",
 		"Exact k-NN result file, will re-run exact k-NN if not exist")
 	flag.IntVar(&nWorker, "t", 200, "Number of threads for query tests")
-	flag.IntVar(&nQuery, "q", 10, "Number of queries")
-	flag.IntVar(&m, "M", 4, "Size of combined hash function")
-	flag.IntVar(&l, "L", 24, "Number of hash tables")
-	flag.IntVar(&t, "T", 8, "Length of probing sequence in Multi-probe")
-	flag.Float64Var(&w, "W", 3000.0, "projection slot size")
-	ls = []int{1, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40}
-	ts = []int{4, 8, 16}
+	flag.IntVar(&nQuery, "q", 1000, "Number of queries")
+	flag.IntVar(&t, "T", 64, "Length of probing sequence in Multi-probe")
+	flag.IntVar(&m, "M", 9, "Size of combined hash function")
+	flag.Float64Var(&w, "W", 8000.0, "projection slot size")
+	flag.IntVar(&l, "L", 4, "Number of hash tables")
+	ls = []int{2, 4, 8, 16, 32, 64}
+	//ms = []int{9, 9, 9, 9, 9, 9}
+	//ws = []float64{8000.0, 8000.0, 8000.0, 8000.0, 8000.0, 8000.0}
+	ms = []int{5, 7, 9, 11, 11, 11}
+	ws = []float64{12398.0, 11683.0, 11153.0, 10778.0, 9093.0, 7889.0}
+	ts = []int{2, 4, 8, 16, 32, 64, 128}
 }
 
 type AnalysisResult struct {
@@ -56,8 +62,8 @@ type AnalysisResult struct {
 
 type VarLMeta struct {
 	AnalysisResults []AnalysisResult `json:"analysis_results"`
-	M               int
-	W               float64
+	Ms              []int
+	Ws              []float64
 	K               int `json:"k"`
 	T               int
 	Ls              []int
@@ -118,18 +124,18 @@ func main() {
 	// Run Var L experiments
 	varlmeta := VarLMeta{
 		AnalysisResults: make([]AnalysisResult, 0),
-		M:               m,
-		W:               w,
+		Ls:              ls,
+		Ms:              ms,
+		Ws:              ws,
 		K:               k,
 		T:               t,
-		Ls:              ls,
 	}
 	// Basic LSH
 	analysisResults = make([]string, 0)
-	for _, l := range ls {
+	for i, l := range ls {
 		log.Printf("Running Basic LSH: l = %d\n", l)
 		result := resultFileName(varloutdir, "basic", "l", l)
-		lsh.RunSimple(data, queries, result, k, nWorker, dim, m, l, w)
+		lsh.RunSimple(data, queries, result, k, nWorker, dim, ms[i], l, ws[i])
 		analysis := analysisFileName(varloutdir, "basic", "l", l)
 		lsh.RunAnalysis(result, knnresult, analysis)
 		analysisResults = append(analysisResults, analysis)
@@ -138,10 +144,10 @@ func main() {
 		AnalysisResult{"Basic", analysisResults})
 	// LSH Forest
 	analysisResults = make([]string, 0)
-	for _, l := range ls {
+	for i, l := range ls {
 		log.Printf("Running LSH Forest: l = %d\n", l)
 		result := resultFileName(varloutdir, "forest", "l", l)
-		lsh.RunForest(data, queries, result, k, nWorker, dim, m, l, w)
+		lsh.RunForest(data, queries, result, k, nWorker, dim, ms[i], l, ws[i])
 		analysis := analysisFileName(varloutdir, "forest", "l", l)
 		lsh.RunAnalysis(result, knnresult, analysis)
 		analysisResults = append(analysisResults, analysis)
@@ -150,10 +156,10 @@ func main() {
 		AnalysisResult{"Forest", analysisResults})
 	// Multi-probe
 	analysisResults = make([]string, 0)
-	for _, l := range ls {
+	for i, l := range ls {
 		log.Printf("Running Multi-probe LSH: l = %d\n", l)
 		result := resultFileName(varloutdir, "multiprobe", "l", l)
-		lsh.RunMultiprobe(data, queries, result, k, nWorker, dim, m, l, w, t)
+		lsh.RunMultiprobe(data, queries, result, k, nWorker, dim, ms[i], l, ws[i], t)
 		analysis := analysisFileName(varloutdir, "multiprobe", "l", l)
 		lsh.RunAnalysis(result, knnresult, analysis)
 		analysisResults = append(analysisResults, analysis)
