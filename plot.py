@@ -29,83 +29,65 @@ if __name__ == "__main__":
     parser.add_argument("vartout")
     args = parser.parse_args(sys.argv[1:])
 
-    # Plot var L experiments
+    # var L experiments
     metafile = os.path.join(args.varlout, ".meta")
     with open(metafile) as f:
-        meta = json.load(f)
-    ls = meta["Ls"]
-    analysis = get_analysis(meta)
+        varlmeta = json.load(f)
+    ls = varlmeta["Ls"]
+    ms = varlmeta["Ms"]
+    ws = varlmeta["Ws"]
+    varl_analysis = get_analysis(varlmeta)
     
-    # Plot recall
-    fig, axes = plt.subplots(1, 1)
-    for label in analysis:
-        recall = analysis[label]["recalls"]
-        axes.plot(ls, recall, label=label)
-    axes.set_xlabel("Number of hash tables")
-    axes.set_ylabel("Recall")
-    axes.legend()
-    fig.savefig("recall_var_l.png")
-    plt.close()
-
-    # Plot error_ratio
-    fig, axes = plt.subplots(1, 1)
-    for label in analysis:
-        error_ratios = analysis[label]["error_ratios"]
-        axes.plot(ls, error_ratios, label=label)
-    axes.set_xlabel("Number of hash tables")
-    axes.set_ylabel("Error ratio")
-    axes.legend()
-    fig.savefig("error_ratio_var_l.png")
-    plt.close()
-
-    # Plot time
-    fig, axes = plt.subplots(1, 1)
-    for label in analysis:
-        times = analysis[label]["times"]
-        axes.plot(ls, times, label=label)
-    axes.set_xlabel("Number of hash tables")
-    axes.set_ylabel("90 percentil query time (ms)")
-    axes.legend()
-    fig.savefig("time_var_l.png")
-    plt.close()
-
-    # Plot var T experiments
+    # var T experiments
     metafile = os.path.join(args.vartout, ".meta")
     with open(metafile) as f:
-        meta = json.load(f)
-    ts = meta["Ts"]
-    analysis = get_analysis(meta)
+        vartmeta = json.load(f)
+    ts = vartmeta["Ts"]
+    vart_analysis = get_analysis(vartmeta)
+    
     
     # Plot recall
-    fig, axes = plt.subplots(1, 1)
-    for label in analysis:
-        recall = analysis[label]["recalls"]
-        axes.plot(ts, recall, label=label)
-    axes.set_xlabel("Number of probes")
-    axes.set_ylabel("Recall")
-    axes.legend()
-    fig.savefig("recall_var_t.png")
-    plt.close()
-
-    # Plot error_ratio
-    fig, axes = plt.subplots(1, 1)
-    for label in analysis:
-        error_ratios = analysis[label]["error_ratios"]
-        axes.plot(ts, error_ratios, label=label)
-    axes.set_xlabel("Number of probes")
-    axes.set_ylabel("Error ratio")
-    axes.legend()
-    fig.savefig("error_ratio_var_t.png")
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5), sharey=True)
+    #axes[0].set_ylim(0.5, 1.0)
+    axes[0].set_xscale('log', basex=2)
+    axes[0].grid()
+    for label in varl_analysis:
+        recall = varl_analysis[label]["recalls"]
+        axes[0].plot(ls, recall, label=label, marker="+")
+    axes[0].set_xlabel("Number of hash tables")
+    axes[0].set_ylabel("Recall")
+    axes[0].legend(loc="lower right")
+    axes[0].set_title("M = %d, W = %d, T = %d" % (ms[0], ws[0], varlmeta["T"]))
+    axes[1].grid()
+    axes[1].set_xscale('log', basex=2)
+    for label in vart_analysis:
+        recall = vart_analysis[label]["recalls"]
+        axes[1].plot(ts, recall, label=label, marker="+")
+    axes[1].set_xlabel("Number of probes")
+    axes[1].set_ylabel("Recall")
+    axes[1].set_title("M = %d, L = %d, W = %d" % (vartmeta["M"], vartmeta["L"], vartmeta["W"]))
+    fig.savefig("recall.png")
     plt.close()
 
     # Plot time
-    fig, axes = plt.subplots(1, 1)
-    for label in analysis:
-        times = analysis[label]["times"]
-        axes.plot(ts, times, label=label)
-    axes.set_xlabel("Number of probes")
-    axes.set_ylabel("90 percentil query time (ms)")
-    axes.legend()
-    fig.savefig("time_var_t.png")
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5), sharey=True)
+    axes[0].set_xscale('log', basex=2)
+    axes[0].grid()
+    for label in varl_analysis:
+        times = varl_analysis[label]["times"]
+        axes[0].plot(ls, times, label=label, marker="+")
+    axes[0].set_xlabel("Number of hash tables")
+    axes[0].set_ylabel("90 percentil query time (ms)")
+    axes[0].legend(loc="upper left")
+    axes[0].set_title("T = %d" % (varlmeta["T"]))
+    axes[1].grid()
+    axes[1].set_xscale('log', basex=2)
+    for label in vart_analysis:
+        times = vart_analysis[label]["times"]
+        axes[1].plot(ts, times, label=label, marker="+")
+    axes[1].set_xlabel("Number of probes")
+    axes[1].set_ylabel("90 percentil query time (ms)")
+    axes[1].set_title("M = %d, L = %d, W = %d" % (vartmeta["M"], vartmeta["L"], vartmeta["W"]))
+    fig.savefig("time.png")
     plt.close()
 
