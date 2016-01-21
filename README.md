@@ -1,28 +1,11 @@
-# CSC 2515 Project
+# Golang LSH
 
-## Build Instructions
+This library includes various Locality Sensitive Hashing (LSH) algorithms
+for the approximate nearest neighbour search problem.
 
-### Flann
+Currently includes:
 
-To build flann:
-
-1.  Create subdirectory (e.g., `build`) in flann main directory
-2.  `cd build && cmake ..`
-3.  `make`
-4.  `sudo make install` to install shared libraries (libflann\_cpp)
-
-### OpenCV
-
-To build OpenCV:
-
-1.  Create subdirectory (e.g., `build`) in flann main directory
-2.  `cd build && cmake ..`
-3.  `make`
-4.  `sudo make install` to install shared libraries (libopencv)
-
-## To do
-
-1.  Use LSH on small dataset using flann
-2.  Use brute-force kNN on small dataset using OpenCV
-3.  Write python script for calculating precision/recall on test results
+* [Basic LSH](http://www.vldb.org/conf/1999/P49.pdf)
+* [Multi-probe LSH](http://www.cs.princeton.edu/cass/papers/mplsh_vldb07.pdf)
+* [LSH Forest](http://infolab.stanford.edu/~bawa/Pub/similarity.pdf)
 
