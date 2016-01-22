@@ -75,6 +75,8 @@ func (h *perturbSetHeap) Pop() interface{} {
 	return x
 }
 
+// MultiprobeLsh implements the Multi-probe LSH algorithm by Qin Lv et.al.
+// The Multi-probe LSH does not support k-NN query directly.
 type MultiprobeLsh struct {
 	*BasicLsh
 	// The size of our probe sequence.
@@ -92,6 +94,14 @@ type MultiprobeLsh struct {
 	perturbVecs [][][]int
 }
 
+// NewMultiprobeLsh creates a new Multi-probe LSH for L2 distance.
+// dim is the diminsionality of the data, l is the number of hash
+// tables to use, m is the number of hash values to concatenate to
+// form the key to the hash tables, and w is the slot size for the
+// family of LSH functions.
+// t is the number of perturbation vectors that will be applied to
+// each query.
+// Increasing t increases the running time of the Query function.
 func NewMultiprobeLsh(dim, l, m int, w float64, t int) *MultiprobeLsh {
 	index := &MultiprobeLsh{
 		BasicLsh: NewBasicLsh(dim, l, m, w),
@@ -230,7 +240,13 @@ func (index *MultiprobeLsh) perturb(baseKey []hashTableKey, perturbation [][]int
 	return perturbedTableKeys
 }
 
-func (index *MultiprobeLsh) QueryKnn(q Point, k int, out chan int) {
+// Query returns the ids of nearest neighbour candidates,
+// given the query point,
+// and writes them to an output channel, out.
+// Multi-probe LSH does not support k-NN query directly,
+// however, it can be used as a part of a k-NN query function.
+// Note: the function does not close the channel.
+func (index *MultiprobeLsh) Query(q Point, out chan int) {
 	baseKey := index.hash(q)
 	seens := make(map[int]bool)
 	for i := 0; i < len(index.perturbVecs)+1; i++ {

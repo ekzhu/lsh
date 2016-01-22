@@ -33,7 +33,7 @@ func Test_MultiprobeLshQueryKnn(t *testing.T) {
 	for i, key := range insertedKeys {
 		result := make(chan int)
 		go func() {
-			lsh.QueryKnn(points[i], 10, result)
+			lsh.Query(points[i], result)
 			close(result)
 		}()
 		found := false

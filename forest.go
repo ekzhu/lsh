@@ -106,6 +106,8 @@ func (tree *prefixTree) lookup(maxLevel int, tableKey hashTableKey) []int {
 	return indices
 }
 
+// LshForest implements the LSH Forest algorithm by Mayank Bawa et.al.
+// It supports both nearest neighbour candidate query and k-NN query.
 type LshForest struct {
 	// Embedded type
 	*lshParams
@@ -113,6 +115,11 @@ type LshForest struct {
 	trees []prefixTree
 }
 
+// NewLshForest creates a new LSH Forest for L2 distance.
+// dim is the diminsionality of the data, l is the number of hash
+// tables to use, m is the number of hash values to concatenate to
+// form the key to the hash tables, w is the slot size for the
+// family of LSH functions.
 func NewLshForest(dim, l, m int, w float64) *LshForest {
 	trees := make([]prefixTree, l)
 	for i, _ := range trees {
@@ -129,7 +136,8 @@ func NewLshForest(dim, l, m int, w float64) *LshForest {
 	}
 }
 
-// Insert adds a point into the LSH Forest index.
+// Insert adds a new data point to the LSH Forest.
+// id is the unique identifier for the data point.
 func (index *LshForest) Insert(point Point, id int) {
 	// Apply hash functions.
 	hvs := index.hash(point)
@@ -163,8 +171,10 @@ func (index *LshForest) queryHelper(maxLevel int, tableKeys []hashTableKey) []in
 	return indices
 }
 
-// Query searches for candidate keys given the signature
-// and writes them to an output channel
+// Query returns the ids of approximate nearest neighbour candidates,
+// in un-sorted order, given the query point,
+// and writes them to an output channel, out.
+// Note: the function does not close the channel.
 func (index *LshForest) Query(q Point, out chan int) {
 	// Apply hash functions
 	hvs := index.hash(q)
@@ -173,7 +183,10 @@ func (index *LshForest) Query(q Point, out chan int) {
 	}
 }
 
-// QueryK queries for the top k approximate closest neighbours.
+// QueryKnn returns the ids of the top-k approximate nearest neighbours,
+// in un-sorted order, given the query point,
+// and writes them to an output channel, out.
+// Note: the function does not close the channel.
 func (index *LshForest) QueryKnn(q Point, k int, out chan int) {
 	// Apply hash functions
 	hvs := index.hash(q)

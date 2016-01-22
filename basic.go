@@ -9,14 +9,18 @@ type basicHashTableKey string
 
 type hashTable map[basicHashTableKey]hashTableBucket
 
+// BasicLsh implements the original LSH algorithm for L2 distance.
 type BasicLsh struct {
 	*lshParams
-	// Number of distinct hashes in the index.
-	count int
 	// Hash tables.
 	tables []hashTable
 }
 
+// NewBasicLsh creates a basic LSH for L2 distance.
+// dim is the diminsionality of the data, l is the number of hash
+// tables to use, m is the number of hash values to concatenate to
+// form the key to the hash tables, w is the slot size for the
+// family of LSH functions.
 func NewBasicLsh(dim, l, m int, w float64) *BasicLsh {
 	tables := make([]hashTable, l)
 	for i := range tables {
@@ -24,7 +28,6 @@ func NewBasicLsh(dim, l, m int, w float64) *BasicLsh {
 	}
 	return &BasicLsh{
 		lshParams: newLshParams(dim, l, m, w),
-		count:     0,
 		tables:    tables,
 	}
 }
@@ -41,7 +44,8 @@ func (index *BasicLsh) toBasicHashTableKeys(keys []hashTableKey) []basicHashTabl
 	return basicKeys
 }
 
-// Insert adds a new key to the LSH
+// Insert adds a new data point to the LSH.
+// id is the unique identifier for the data point.
 func (index *BasicLsh) Insert(point Point, id int) {
 	// Apply hash functions
 	hvs := index.toBasicHashTableKeys(index.hash(point))
@@ -62,8 +66,12 @@ func (index *BasicLsh) Insert(point Point, id int) {
 	wg.Wait()
 }
 
-// Query searches for candidate keys given the signature
-// and writes them to an output channel
+// Query returns the ids of approximate nearest neighbour candidates,
+// in un-sorted order, given the query point,
+// and writes them to an output channel, out.
+// The basic LSH does not support k-NN query directly,
+// however, it can be used as a part of a k-NN query function.
+// Note: the function does not close the channel.
 func (index *BasicLsh) Query(q Point, out chan int) {
 	// Apply hash functions
 	hvs := index.toBasicHashTableKeys(index.hash(q))

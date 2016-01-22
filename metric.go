@@ -2,10 +2,10 @@ package lsh
 
 import "math"
 
-// Point is a vector that we are trying to index and query
+// Point is a vector in the L2 metric space.
 type Point []float64
 
-// Dot returns the dot product of two Point vectors
+// Dot returns the dot product of two points.
 func (p Point) Dot(q Point) float64 {
 	s := 0.0
 	for i := 0; i < len(p); i++ {
@@ -14,7 +14,7 @@ func (p Point) Dot(q Point) float64 {
 	return s
 }
 
-// L2 returns the L2 distance of two Point vectors
+// L2 returns the L2 distance of two points.
 func (p Point) L2(q Point) float64 {
 	s := 0.0
 	for i := 0; i < len(p); i++ {
