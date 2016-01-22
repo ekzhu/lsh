@@ -231,7 +231,7 @@ func (index *MultiprobeLsh) perturb(baseKey []hashTableKey, perturbation [][]int
 }
 
 func (index *MultiprobeLsh) QueryKnn(q Point, k int, out chan int) {
-	baseKey := index.Hash(q)
+	baseKey := index.hash(q)
 	seens := make(map[int]bool)
 	for i := 0; i < len(index.perturbVecs)+1; i++ {
 		perturbedTableKeys := baseKey

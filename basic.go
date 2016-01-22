@@ -44,7 +44,7 @@ func (index *BasicLsh) toBasicHashTableKeys(keys []hashTableKey) []basicHashTabl
 // Insert adds a new key to the LSH
 func (index *BasicLsh) Insert(point Point, id int) {
 	// Apply hash functions
-	hvs := index.toBasicHashTableKeys(index.Hash(point))
+	hvs := index.toBasicHashTableKeys(index.hash(point))
 	// Insert key into all hash tables
 	var wg sync.WaitGroup
 	for i := range index.tables {
@@ -66,7 +66,7 @@ func (index *BasicLsh) Insert(point Point, id int) {
 // and writes them to an output channel
 func (index *BasicLsh) Query(q Point, out chan int) {
 	// Apply hash functions
-	hvs := index.toBasicHashTableKeys(index.Hash(q))
+	hvs := index.toBasicHashTableKeys(index.hash(q))
 	// Keep track of keys seen
 	seens := make(map[int]bool)
 	for i, table := range index.tables {

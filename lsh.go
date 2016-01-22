@@ -58,7 +58,7 @@ func newLshParams(dim, l, m int, w float64) *lshParams {
 }
 
 // Hash returns all combined hash values for all hash tables.
-func (lsh *lshParams) Hash(point Point) []hashTableKey {
+func (lsh *lshParams) hash(point Point) []hashTableKey {
 	hvs := make([]hashTableKey, lsh.l)
 	for i := range hvs {
 		s := make(hashTableKey, lsh.m)
