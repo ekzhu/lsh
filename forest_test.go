@@ -93,7 +93,7 @@ func Test_LshForestParallelQuery(t *testing.T) {
 	}
 }
 
-func Test_LshForestQueryK(t *testing.T) {
+func Test_LshForestQueryKnn(t *testing.T) {
 	lsh := NewLshForest(100, 5, 5, 5.0)
 	points := randomPoints(10, 100, 32.0)
 	insertedKeys := make([]int, 10)
@@ -105,7 +105,7 @@ func Test_LshForestQueryK(t *testing.T) {
 	// Query a single point, should obtain back the entire index.
 	result := make(chan int)
 	go func() {
-		lsh.QueryK(points[0], 10, result)
+		lsh.QueryKnn(points[0], 10, result)
 		close(result)
 	}()
 	actual := make([]int, 0)

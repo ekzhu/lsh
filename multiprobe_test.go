@@ -4,7 +4,7 @@ import "testing"
 
 func Test_NewMultiprobeLsh(t *testing.T) {
 	lsh := NewMultiprobeLsh(100, 5, 5, 5.0, 64)
-	if len(lsh.SimpleIndex.tables) != 5 {
+	if len(lsh.tables) != 5 {
 		t.Error("Lsh init fail")
 	}
 	t.Logf("Scores %v", lsh.scores)
@@ -20,7 +20,7 @@ func Test_NewMultiprobeLsh(t *testing.T) {
 
 }
 
-func Test_MultiprobeLshQueryK(t *testing.T) {
+func Test_MultiprobeLshQueryKnn(t *testing.T) {
 	lsh := NewMultiprobeLsh(100, 5, 5, 5.0, 10)
 	points := randomPoints(10, 100, 32.0)
 	insertedKeys := make([]int, 10)
@@ -33,7 +33,7 @@ func Test_MultiprobeLshQueryK(t *testing.T) {
 	for i, key := range insertedKeys {
 		result := make(chan int)
 		go func() {
-			lsh.QueryK(points[i], 10, result)
+			lsh.QueryKnn(points[i], 10, result)
 			close(result)
 		}()
 		found := false

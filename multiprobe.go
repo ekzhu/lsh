@@ -75,8 +75,8 @@ func (h *perturbSetHeap) Pop() interface{} {
 	return x
 }
 
-type MultiprobeIndex struct {
-	*SimpleIndex
+type MultiprobeLsh struct {
+	*BasicLsh
 	// The size of our probe sequence.
 	t int
 
@@ -87,22 +87,22 @@ type MultiprobeIndex struct {
 
 	// Each hash table has a list of perturbation vectors
 	// each perturbation vector is list of -+ 1 or 0 that will
-	// be applied to the TableKey of the query hash value
+	// be applied to the hashTableKey of the query hash value
 	// t x l x m
 	perturbVecs [][][]int
 }
 
-func NewMultiprobeLsh(dim, l, m int, w float64, t int) *MultiprobeIndex {
-	index := &MultiprobeIndex{
-		SimpleIndex: NewSimpleLsh(dim, l, m, w),
-		t:           t,
+func NewMultiprobeLsh(dim, l, m int, w float64, t int) *MultiprobeLsh {
+	index := &MultiprobeLsh{
+		BasicLsh: NewBasicLsh(dim, l, m, w),
+		t:        t,
 	}
 	index.initProbeSequence()
 	return index
 }
 
-func (index *MultiprobeIndex) initProbeSequence() {
-	m := index.SimpleIndex.LshSettings.m
+func (index *MultiprobeLsh) initProbeSequence() {
+	m := index.m
 	index.scores = make([]float64, 2*m)
 	// Use j's starting from 1 to match the paper.
 	for j := 1; j <= m; j++ {
@@ -115,7 +115,7 @@ func (index *MultiprobeIndex) initProbeSequence() {
 	index.genPerturbVecs()
 }
 
-func (index *MultiprobeIndex) getScore(ps *perturbSet) float64 {
+func (index *MultiprobeLsh) getScore(ps *perturbSet) float64 {
 	score := 0.0
 	for j := range *ps {
 		score += index.scores[j-1]
@@ -123,7 +123,7 @@ func (index *MultiprobeIndex) getScore(ps *perturbSet) float64 {
 	return score
 }
 
-func (index *MultiprobeIndex) genPerturbSets() {
+func (index *MultiprobeLsh) genPerturbSets() {
 	setHeap := make(perturbSetHeap, 1)
 	start := perturbSet{1: true}
 	setHeap[0] = perturbSetPair{
@@ -132,7 +132,7 @@ func (index *MultiprobeIndex) genPerturbSets() {
 	}
 	heap.Init(&setHeap)
 	index.perturbSets = make([]perturbSet, index.t)
-	m := index.SimpleIndex.LshSettings.m
+	m := index.m
 
 	for i := 0; i < index.t; i++ {
 		for counter := 0; true; counter++ {
@@ -159,7 +159,7 @@ func (index *MultiprobeIndex) genPerturbSets() {
 	}
 }
 
-func (index *MultiprobeIndex) genPerturbVecs() {
+func (index *MultiprobeLsh) genPerturbVecs() {
 	// First we need to generate the permutation tables
 	// that maps the ids of the unit perturbation in each
 	// perturbation set to the index of the unit hash
@@ -199,13 +199,9 @@ func (index *MultiprobeIndex) genPerturbVecs() {
 	}
 }
 
-func (index *MultiprobeIndex) Insert(point Point, id int) {
-	index.SimpleIndex.Insert(point, id)
-}
-
-func (index *MultiprobeIndex) queryHelper(tableKeys []TableKey) []int {
+func (index *MultiprobeLsh) queryHelper(tableKeys []hashTableKey) []int {
 	// Apply hash functions
-	hvs := index.toSimpleKeys(tableKeys)
+	hvs := index.toBasicHashTableKeys(tableKeys)
 
 	// Lookup in each table.
 	candidatesAll := make([]int, 0)
@@ -220,13 +216,13 @@ func (index *MultiprobeIndex) queryHelper(tableKeys []TableKey) []int {
 }
 
 // perturb returns the result of applying perturbation on each baseKey.
-func (index *MultiprobeIndex) perturb(baseKey []TableKey, perturbation [][]int) []TableKey {
+func (index *MultiprobeLsh) perturb(baseKey []hashTableKey, perturbation [][]int) []hashTableKey {
 	if len(baseKey) != len(perturbation) {
 		panic("Number tables does not match with number of perturb vecs")
 	}
-	perturbedTableKeys := make([]TableKey, len(baseKey))
+	perturbedTableKeys := make([]hashTableKey, len(baseKey))
 	for i, p := range perturbation {
-		perturbedTableKeys[i] = make(TableKey, index.m)
+		perturbedTableKeys[i] = make(hashTableKey, index.m)
 		for j, h := range baseKey[i] {
 			perturbedTableKeys[i][j] = h + p[j]
 		}
@@ -234,7 +230,7 @@ func (index *MultiprobeIndex) perturb(baseKey []TableKey, perturbation [][]int) 
 	return perturbedTableKeys
 }
 
-func (index *MultiprobeIndex) QueryK(q Point, k int, out chan int) {
+func (index *MultiprobeLsh) QueryKnn(q Point, k int, out chan int) {
 	baseKey := index.Hash(q)
 	seens := make(map[int]bool)
 	for i := 0; i < len(index.perturbVecs)+1; i++ {

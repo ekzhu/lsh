@@ -5,15 +5,15 @@ import (
 	"testing"
 )
 
-func Test_NewSimpleLsh(t *testing.T) {
-	lsh := NewSimpleLsh(5, 5, 100, 5.0)
+func Test_NewBasicLsh(t *testing.T) {
+	lsh := NewBasicLsh(5, 5, 100, 5.0)
 	if len(lsh.tables) != 5 {
 		t.Error("Lsh init fail")
 	}
 }
 
 func Test_Insert(t *testing.T) {
-	lsh := NewSimpleLsh(100, 5, 5, 5.0)
+	lsh := NewBasicLsh(100, 5, 5, 5.0)
 	points := randomPoints(10, 100, 32.0)
 	for i, p := range points {
 		lsh.Insert(p, i)
@@ -26,7 +26,7 @@ func Test_Insert(t *testing.T) {
 }
 
 func Test_Query(t *testing.T) {
-	lsh := NewSimpleLsh(100, 5, 5, 5.0)
+	lsh := NewBasicLsh(100, 5, 5, 5.0)
 	points := randomPoints(10, 100, 32.0)
 	insertedKeys := make([]int, 10)
 	for i, p := range points {
@@ -54,7 +54,7 @@ func Test_Query(t *testing.T) {
 }
 
 func Test_ParallelQuery(t *testing.T) {
-	lsh := NewSimpleLsh(100, 5, 5, 5.0)
+	lsh := NewBasicLsh(100, 5, 5, 5.0)
 	points := randomPoints(10, 100, 32.0)
 	for i, p := range points {
 		lsh.Insert(p, i)

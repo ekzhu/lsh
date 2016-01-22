@@ -10,12 +10,12 @@ const (
 )
 
 // Key is a way to index into a table.
-type TableKey []int
+type hashTableKey []int
 
 // Value is an index into the input dataset.
-type Value []int
+type hashTableBucket []int
 
-type LshSettings struct {
+type lshParams struct {
 	// Dimensionality of the input data.
 	dim int
 	// Number of tables.
@@ -30,8 +30,8 @@ type LshSettings struct {
 	b [][]float64
 }
 
-// NewLshSettings initializes the LSH settings.
-func NewLshSettings(dim, l, m int, w float64) *LshSettings {
+// NewLshParams initializes the LSH settings.
+func newLshParams(dim, l, m int, w float64) *lshParams {
 	// Initialize hash params.
 	a := make([][]Point, l)
 	b := make([][]float64, l)
@@ -47,7 +47,7 @@ func NewLshSettings(dim, l, m int, w float64) *LshSettings {
 			b[i][j] = random.Float64() * float64(w)
 		}
 	}
-	return &LshSettings{
+	return &lshParams{
 		dim: dim,
 		l:   l,
 		m:   m,
@@ -58,10 +58,10 @@ func NewLshSettings(dim, l, m int, w float64) *LshSettings {
 }
 
 // Hash returns all combined hash values for all hash tables.
-func (lsh *LshSettings) Hash(point Point) []TableKey {
-	hvs := make([]TableKey, lsh.l)
+func (lsh *lshParams) Hash(point Point) []hashTableKey {
+	hvs := make([]hashTableKey, lsh.l)
 	for i := range hvs {
-		s := make(TableKey, lsh.m)
+		s := make(hashTableKey, lsh.m)
 		for j := 0; j < lsh.m; j++ {
 			hv := (point.Dot(lsh.a[i][j]) + lsh.b[i][j]) / lsh.w
 			s[j] = int(math.Floor(hv))

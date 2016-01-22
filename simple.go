@@ -5,56 +5,55 @@ import (
 	"sync"
 )
 
-type SimpleIndexKey string
+type basicHashTableKey string
 
-// A table in the simple index is a lookup from a TableKey to a value.
-type Table map[SimpleIndexKey]Value
+type hashTable map[basicHashTableKey]hashTableBucket
 
-type SimpleIndex struct {
-	*LshSettings
+type BasicLsh struct {
+	*lshParams
 	// Number of distinct hashes in the index.
 	count int
 	// Hash tables.
-	tables []Table
+	tables []hashTable
 }
 
-func NewSimpleLsh(dim, l, m int, w float64) *SimpleIndex {
-	tables := make([]Table, l)
+func NewBasicLsh(dim, l, m int, w float64) *BasicLsh {
+	tables := make([]hashTable, l)
 	for i := range tables {
-		tables[i] = make(Table)
+		tables[i] = make(hashTable)
 	}
-	return &SimpleIndex{
-		LshSettings: NewLshSettings(dim, l, m, w),
-		count:       0,
-		tables:      tables,
+	return &BasicLsh{
+		lshParams: newLshParams(dim, l, m, w),
+		count:     0,
+		tables:    tables,
 	}
 }
 
-func (index *SimpleIndex) toSimpleKeys(keys []TableKey) []SimpleIndexKey {
-	simpleKeys := make([]SimpleIndexKey, index.l)
+func (index *BasicLsh) toBasicHashTableKeys(keys []hashTableKey) []basicHashTableKey {
+	basicKeys := make([]basicHashTableKey, index.l)
 	for i, key := range keys {
 		s := ""
 		for _, hashVal := range key {
 			s += fmt.Sprintf("%.16x", hashVal)
 		}
-		simpleKeys[i] = SimpleIndexKey(s)
+		basicKeys[i] = basicHashTableKey(s)
 	}
-	return simpleKeys
+	return basicKeys
 }
 
 // Insert adds a new key to the LSH
-func (index *SimpleIndex) Insert(point Point, id int) {
+func (index *BasicLsh) Insert(point Point, id int) {
 	// Apply hash functions
-	hvs := index.toSimpleKeys(index.Hash(point))
+	hvs := index.toBasicHashTableKeys(index.Hash(point))
 	// Insert key into all hash tables
 	var wg sync.WaitGroup
 	for i := range index.tables {
 		hv := hvs[i]
 		table := index.tables[i]
 		wg.Add(1)
-		go func(table Table, hv SimpleIndexKey) {
+		go func(table hashTable, hv basicHashTableKey) {
 			if _, exist := table[hv]; !exist {
-				table[hv] = make(Value, 0)
+				table[hv] = make(hashTableBucket, 0)
 			}
 			table[hv] = append(table[hv], id)
 			wg.Done()
@@ -65,9 +64,9 @@ func (index *SimpleIndex) Insert(point Point, id int) {
 
 // Query searches for candidate keys given the signature
 // and writes them to an output channel
-func (index *SimpleIndex) Query(q Point, out chan int) {
+func (index *BasicLsh) Query(q Point, out chan int) {
 	// Apply hash functions
-	hvs := index.toSimpleKeys(index.Hash(q))
+	hvs := index.toBasicHashTableKeys(index.Hash(q))
 	// Keep track of keys seen
 	seens := make(map[int]bool)
 	for i, table := range index.tables {

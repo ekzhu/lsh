@@ -16,7 +16,7 @@ type TreeNode struct {
 
 // recursiveAdd recurses down the tree to find the correct location to insert id.
 // Returns whether a new hash value was added.
-func (node *TreeNode) recursiveAdd(level int, id int, tableKey TableKey) bool {
+func (node *TreeNode) recursiveAdd(level int, id int, tableKey hashTableKey) bool {
 	if level == len(tableKey) {
 		node.indices = append(node.indices, id)
 		return false
@@ -69,13 +69,13 @@ type Tree struct {
 	root *TreeNode
 }
 
-func (tree *Tree) insertIntoTree(id int, tableKey TableKey) {
+func (tree *Tree) insertIntoTree(id int, tableKey hashTableKey) {
 	if tree.root.recursiveAdd(0, id, tableKey) {
 		tree.count++
 	}
 }
 
-func (tree *Tree) lookup(maxLevel int, tableKey TableKey) []int {
+func (tree *Tree) lookup(maxLevel int, tableKey hashTableKey) []int {
 	indices := make([]int, 0)
 	currentNode := tree.root
 	// fmt.Println(tableKey)
@@ -108,7 +108,7 @@ func (tree *Tree) lookup(maxLevel int, tableKey TableKey) []int {
 
 type ForestIndex struct {
 	// Embedded type
-	*LshSettings
+	*lshParams
 	// Trees.
 	trees []Tree
 }
@@ -124,8 +124,8 @@ func NewLshForest(dim, l, m int, w float64) *ForestIndex {
 		}
 	}
 	return &ForestIndex{
-		LshSettings: NewLshSettings(dim, l, m, w),
-		trees:       trees,
+		lshParams: newLshParams(dim, l, m, w),
+		trees:     trees,
 	}
 }
 
@@ -139,7 +139,7 @@ func (index *ForestIndex) Insert(point Point, id int) {
 		hv := hvs[i]
 		tree := &(index.trees[i])
 		wg.Add(1)
-		go func(tree *Tree, hv TableKey) {
+		go func(tree *Tree, hv hashTableKey) {
 			tree.insertIntoTree(id, hv)
 			wg.Done()
 		}(tree, hv)
@@ -148,7 +148,7 @@ func (index *ForestIndex) Insert(point Point, id int) {
 }
 
 // Helper that queries all trees and returns an array of distinct indices.
-func (index *ForestIndex) queryHelper(maxLevel int, tableKeys []TableKey) []int {
+func (index *ForestIndex) queryHelper(maxLevel int, tableKeys []hashTableKey) []int {
 	// Keep track of keys seen
 	indices := make([]int, 0)
 	seens := make(map[int]bool)
@@ -168,17 +168,17 @@ func (index *ForestIndex) queryHelper(maxLevel int, tableKeys []TableKey) []int 
 func (index *ForestIndex) Query(q Point, out chan int) {
 	// Apply hash functions
 	hvs := index.Hash(q)
-	for _, candidate := range index.queryHelper(index.LshSettings.m, hvs) {
+	for _, candidate := range index.queryHelper(index.m, hvs) {
 		out <- candidate
 	}
 }
 
 // QueryK queries for the top k approximate closest neighbours.
-func (index *ForestIndex) QueryK(q Point, k int, out chan int) {
+func (index *ForestIndex) QueryKnn(q Point, k int, out chan int) {
 	// Apply hash functions
 	hvs := index.Hash(q)
 	candidates := make([]int, 0)
-	for maxLevels := index.LshSettings.m; maxLevels >= 0; maxLevels-- {
+	for maxLevels := index.m; maxLevels >= 0; maxLevels-- {
 		candidates = index.queryHelper(maxLevels, hvs)
 		// Enough candidates at this level, so we can rank and return.
 		if len(candidates) >= k {
