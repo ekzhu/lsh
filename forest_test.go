@@ -1,9 +1,6 @@
 package lsh
 
-import (
-	"sync"
-	"testing"
-)
+import "testing"
 
 func Test_NewLshForest(t *testing.T) {
 	lsh := NewLshForest(5, 5, 100, 5.0)
@@ -37,13 +34,9 @@ func Test_LshForestQuery(t *testing.T) {
 	// Use the inserted points as queries, and
 	// verify that we can get back each query itself
 	for i, key := range insertedKeys {
-		result := make(chan int)
-		go func() {
-			lsh.Query(points[i], result)
-			close(result)
-		}()
+		done := make(chan struct{})
 		found := false
-		for foundKey := range result {
+		for foundKey := range lsh.Query(points[i], done) {
 			if foundKey == key {
 				found = true
 			}
@@ -51,45 +44,7 @@ func Test_LshForestQuery(t *testing.T) {
 		if !found {
 			t.Error("Query fail")
 		}
-	}
-}
-
-func Test_LshForestParallelQuery(t *testing.T) {
-	lsh := NewLshForest(100, 5, 5, 5.0)
-	points := randomPoints(10, 100, 32.0)
-	for i, p := range points {
-		lsh.Insert(p, i)
-	}
-	// Run multiple queries in parallel
-	// and writing candidates to the same output
-	queries := randomPoints(10, 10, 32.0)
-	in := make(chan Point)
-	out := make(chan int)
-	var wg sync.WaitGroup
-	wg.Add(5)
-	// Input thread
-	go func() {
-		for _, q := range queries {
-			in <- q
-		}
-		close(in)
-	}()
-	// Worker threads
-	for w := 0; w < 5; w++ {
-		go func() {
-			for q := range in {
-				lsh.Query(q, out)
-			}
-			wg.Done()
-		}()
-	}
-	// Waiter thread
-	go func() {
-		wg.Wait()
-		close(out)
-	}()
-	// Main thread collecting outputs
-	for _ = range out {
+		close(done)
 	}
 }
 
@@ -101,18 +56,13 @@ func Test_LshForestQueryKnn(t *testing.T) {
 		lsh.Insert(p, i)
 		insertedKeys[i] = i
 	}
-
+	done := make(chan struct{})
 	// Query a single point, should obtain back the entire index.
-	result := make(chan int)
-	go func() {
-		lsh.QueryKnn(points[0], 10, result)
-		close(result)
-	}()
 	actual := make([]int, 0)
-	for key := range result {
+	for key := range lsh.QueryKnn(points[0], 10, done) {
 		actual = append(actual, key)
 	}
-
+	close(done)
 	// Use the inserted points as queries, and
 	// verify that we can get back each query itself
 	for _, key := range insertedKeys {

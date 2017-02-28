@@ -240,30 +240,40 @@ func (index *MultiprobeLsh) perturb(baseKey []hashTableKey, perturbation [][]int
 	return perturbedTableKeys
 }
 
-// Query returns the ids of nearest neighbour candidates,
+// Query finds the ids of nearest neighbour candidates,
 // given the query point,
-// and writes them to an output channel, out.
+// and writes them to the output channel returned.
+// Query will stop executing once the done channel is closed.
 // Multi-probe LSH does not support k-NN query directly,
 // however, it can be used as a part of a k-NN query function.
 // Note: the function does not close the channel.
-func (index *MultiprobeLsh) Query(q Point, out chan int) {
-	baseKey := index.hash(q)
-	seens := make(map[int]bool)
-	for i := 0; i < len(index.perturbVecs)+1; i++ {
-		perturbedTableKeys := baseKey
-		if i != 0 {
-			// Generate new hash key based on perturbation.
-			perturbedTableKeys = index.perturb(baseKey, index.perturbVecs[i-1])
-		}
-		//fmt.Printf("%d: %v\n", i, perturbedTableKeys)
-		// Perform lookup.
-		neighbours := index.queryHelper(perturbedTableKeys)
-		// Append new candidates to index.
-		for _, id := range neighbours {
-			if _, seen := seens[id]; !seen {
-				out <- id
-				seens[id] = true
+func (index *MultiprobeLsh) Query(q Point, done <-chan struct{}) <-chan int {
+	out := make(chan int)
+	go func() {
+		defer close(out)
+		baseKey := index.hash(q)
+		seens := make(map[int]bool)
+		for i := 0; i < len(index.perturbVecs)+1; i++ {
+			perturbedTableKeys := baseKey
+			if i != 0 {
+				// Generate new hash key based on perturbation.
+				perturbedTableKeys = index.perturb(baseKey, index.perturbVecs[i-1])
+			}
+			//fmt.Printf("%d: %v\n", i, perturbedTableKeys)
+			// Perform lookup.
+			neighbours := index.queryHelper(perturbedTableKeys)
+			// Append new candidates to index.
+			for _, id := range neighbours {
+				if _, seen := seens[id]; !seen {
+					select {
+					case out <- id:
+					case <-done:
+						return
+					}
+					seens[id] = true
+				}
 			}
 		}
-	}
+	}()
+	return out
 }

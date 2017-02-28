@@ -171,36 +171,56 @@ func (index *LshForest) queryHelper(maxLevel int, tableKeys []hashTableKey) []in
 	return indices
 }
 
-// Query returns the ids of approximate nearest neighbour candidates,
+// Query finds the ids of approximate nearest neighbour candidates,
 // in un-sorted order, given the query point,
-// and writes them to an output channel, out.
+// and writes them to the output channel returned.
+// Query will stop executing once the done channel is closed.
 // Note: the function does not close the channel.
-func (index *LshForest) Query(q Point, out chan int) {
-	// Apply hash functions
-	hvs := index.hash(q)
-	for _, candidate := range index.queryHelper(index.m, hvs) {
-		out <- candidate
-	}
+func (index *LshForest) Query(q Point, done <-chan struct{}) <-chan int {
+	out := make(chan int)
+	go func() {
+		defer close(out)
+		// Apply hash functions
+		hvs := index.hash(q)
+		for _, candidate := range index.queryHelper(index.m, hvs) {
+			select {
+			case out <- candidate:
+			case <-done:
+				return
+			}
+		}
+	}()
+	return out
 }
 
-// QueryKnn returns the ids of the top-k approximate nearest neighbours,
+// QueryKnn finds the ids of the top-k approximate nearest neighbours,
 // in un-sorted order, given the query point,
-// and writes them to an output channel, out.
+// and writes them to the output channel returned.
+// Query will stop executing once the done channel is closed.
 // Note: the function does not close the channel.
-func (index *LshForest) QueryKnn(q Point, k int, out chan int) {
-	// Apply hash functions
-	hvs := index.hash(q)
-	candidates := make([]int, 0)
-	for maxLevels := index.m; maxLevels >= 0; maxLevels-- {
-		candidates = index.queryHelper(maxLevels, hvs)
-		// Enough candidates at this level, so we can rank and return.
-		if len(candidates) >= k {
-			break
+func (index *LshForest) QueryKnn(q Point, k int, done <-chan struct{}) <-chan int {
+	out := make(chan int)
+	go func() {
+		defer close(out)
+		// Apply hash functions
+		hvs := index.hash(q)
+		candidates := make([]int, 0)
+		for maxLevels := index.m; maxLevels >= 0; maxLevels-- {
+			candidates = index.queryHelper(maxLevels, hvs)
+			// Enough candidates at this level, so we can rank and return.
+			if len(candidates) >= k {
+				break
+			}
 		}
-	}
-	for _, candidate := range candidates {
-		out <- candidate
-	}
+		for _, candidate := range candidates {
+			select {
+			case out <- candidate:
+			case <-done:
+				return
+			}
+		}
+	}()
+	return out
 }
 
 // Dump prints out the index for debugging

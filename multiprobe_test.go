@@ -31,13 +31,9 @@ func Test_MultiprobeLshQueryKnn(t *testing.T) {
 	// Use the inserted points as queries, and
 	// verify that we can get back each query itself
 	for i, key := range insertedKeys {
-		result := make(chan int)
-		go func() {
-			lsh.Query(points[i], result)
-			close(result)
-		}()
+		done := make(chan struct{})
 		found := false
-		for foundKey := range result {
+		for foundKey := range lsh.Query(points[i], done) {
 			if foundKey == key {
 				found = true
 			}
@@ -45,5 +41,6 @@ func Test_MultiprobeLshQueryKnn(t *testing.T) {
 		if !found {
 			t.Error("Query fail")
 		}
+		close(done)
 	}
 }
