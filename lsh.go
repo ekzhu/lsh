@@ -13,12 +13,12 @@ const (
 type hashTableKey []int
 
 // Value is an index into the input dataset.
-type hashTableBucket []int
+type hashTableBucket []string
 
 type lshParams struct {
 	// Dimensionality of the input data.
 	dim int
-	// Number of tables.
+	// Number of hash tables.
 	l int
 	// Number of hash functions for each table.
 	m int

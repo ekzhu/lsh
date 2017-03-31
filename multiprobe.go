@@ -209,20 +209,18 @@ func (index *MultiprobeLsh) genPerturbVecs() {
 	}
 }
 
-func (index *MultiprobeLsh) queryHelper(tableKeys []hashTableKey) []int {
+func (index *MultiprobeLsh) queryHelper(tableKeys []hashTableKey, out chan<- string) {
 	// Apply hash functions
 	hvs := index.toBasicHashTableKeys(tableKeys)
 
 	// Lookup in each table.
-	candidatesAll := make([]int, 0)
 	for i, table := range index.tables {
 		if candidates, exist := table[hvs[i]]; exist {
 			for _, id := range candidates {
-				candidatesAll = append(candidatesAll, id)
+				out <- id
 			}
 		}
 	}
-	return candidatesAll
 }
 
 // perturb returns the result of applying perturbation on each baseKey.
@@ -241,39 +239,35 @@ func (index *MultiprobeLsh) perturb(baseKey []hashTableKey, perturbation [][]int
 }
 
 // Query finds the ids of nearest neighbour candidates,
-// given the query point,
-// and writes them to the output channel returned.
-// Query will stop executing once the done channel is closed.
-// Multi-probe LSH does not support k-NN query directly,
-// however, it can be used as a part of a k-NN query function.
-// Note: the function does not close the channel.
-func (index *MultiprobeLsh) Query(q Point, done <-chan struct{}) <-chan int {
-	out := make(chan int)
+// given the query point
+func (index *MultiprobeLsh) Query(q Point) []string {
+	// Hash
+	baseKey := index.hash(q)
+	// Query
+	results := make(chan string)
 	go func() {
-		defer close(out)
-		baseKey := index.hash(q)
-		seens := make(map[int]bool)
+		defer close(results)
 		for i := 0; i < len(index.perturbVecs)+1; i++ {
 			perturbedTableKeys := baseKey
 			if i != 0 {
 				// Generate new hash key based on perturbation.
 				perturbedTableKeys = index.perturb(baseKey, index.perturbVecs[i-1])
 			}
-			//fmt.Printf("%d: %v\n", i, perturbedTableKeys)
 			// Perform lookup.
-			neighbours := index.queryHelper(perturbedTableKeys)
-			// Append new candidates to index.
-			for _, id := range neighbours {
-				if _, seen := seens[id]; !seen {
-					select {
-					case out <- id:
-					case <-done:
-						return
-					}
-					seens[id] = true
-				}
-			}
+			index.queryHelper(perturbedTableKeys, results)
 		}
 	}()
-	return out
+	seen := make(map[string]bool)
+	for id := range results {
+		if _, exist := seen[id]; exist {
+			continue
+		}
+		seen[id] = true
+	}
+	// Collect results
+	ids := make([]string, 0, len(seen))
+	for id := range seen {
+		ids = append(ids, id)
+	}
+	return ids
 }

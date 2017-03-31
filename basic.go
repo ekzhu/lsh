@@ -46,7 +46,7 @@ func (index *BasicLsh) toBasicHashTableKeys(keys []hashTableKey) []basicHashTabl
 
 // Insert adds a new data point to the LSH.
 // id is the unique identifier for the data point.
-func (index *BasicLsh) Insert(point Point, id int) {
+func (index *BasicLsh) Insert(point Point, id string) {
 	// Apply hash functions
 	hvs := index.toBasicHashTableKeys(index.hash(point))
 	// Insert key into all hash tables
@@ -68,32 +68,25 @@ func (index *BasicLsh) Insert(point Point, id int) {
 
 // Query finds the ids of approximate nearest neighbour candidates,
 // in un-sorted order, given the query point,
-// and writes them to the returned output channel.
-// Query will stop executing once the done channel is closed.
-// The basic LSH does not support k-NN query directly,
-// however, it can be used as a part of a k-NN query function.
-func (index *BasicLsh) Query(q Point, done <-chan struct{}) <-chan int {
-	out := make(chan int)
-	go func() {
-		defer close(out)
-		// Apply hash functions
-		hvs := index.toBasicHashTableKeys(index.hash(q))
-		// Keep track of keys seen
-		seens := make(map[int]bool)
-		for i, table := range index.tables {
-			if candidates, exist := table[hvs[i]]; exist {
-				for _, id := range candidates {
-					if _, seen := seens[id]; !seen {
-						seens[id] = true
-						select {
-						case out <- id:
-						case <-done:
-							return
-						}
-					}
+func (index *BasicLsh) Query(q Point) []string {
+	// Apply hash functions
+	hvs := index.toBasicHashTableKeys(index.hash(q))
+	// Keep track of keys seen
+	seen := make(map[string]bool)
+	for i, table := range index.tables {
+		if candidates, exist := table[hvs[i]]; exist {
+			for _, id := range candidates {
+				if _, exist := seen[id]; exist {
+					continue
 				}
+				seen[id] = true
 			}
 		}
-	}()
-	return out
+	}
+	// Collect results
+	ids := make([]string, 0, len(seen))
+	for id := range seen {
+		ids = append(ids, id)
+	}
+	return ids
 }
