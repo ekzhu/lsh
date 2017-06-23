@@ -162,9 +162,11 @@ func (index *LshForest) Insert(point Point, id string) {
 func (index *LshForest) queryHelper(maxLevel int, tableKeys []hashTableKey, done <-chan struct{}, out chan<- string) {
 	var wg sync.WaitGroup
 	wg.Add(len(index.trees))
-	for i, tree := range index.trees {
+	for i := range index.trees {
+		key := tableKeys[i]
+		tree := index.trees[i]
 		go func() {
-			tree.lookup(maxLevel, tableKeys[i], done, out)
+			tree.lookup(maxLevel, key, done, out)
 			wg.Done()
 		}()
 	}
