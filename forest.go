@@ -14,6 +14,21 @@ type treeNode struct {
 	children map[int]*treeNode
 }
 
+func (node *treeNode) recursiveDelete() {
+	for _, child := range node.children {
+		if len((child).children) > 0 {
+			(child).recursiveDelete()
+		}
+
+		if len(child.indices) > 0 {
+			node.indices = nil
+		}
+	}
+
+	node.indices = nil
+	node.children = nil
+}
+
 // recursiveAdd recurses down the tree to find the correct location to insert id.
 // Returns whether a new hash value was added.
 func (node *treeNode) recursiveAdd(level int, id string, tableKey hashTableKey) bool {
@@ -135,6 +150,13 @@ func NewLshForest(dim, l, m int, w float64) *LshForest {
 	return &LshForest{
 		lshParams: newLshParams(dim, l, m, w),
 		trees:     trees,
+	}
+}
+
+// Delete releases the memory used by this index.
+func (index *LshForest) Delete() {
+	for _, tree := range index.trees {
+		(*tree.root).recursiveDelete()
 	}
 }
 
