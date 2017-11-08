@@ -48,7 +48,7 @@ func tab(times int) {
 
 func (node *treeNode) dump(level int) {
 	tab(level)
-	fmt.Printf("{ (%d): ids %o ", node.hashKey, node.ids)
+	fmt.Printf("{ (%v): ids %v ", node.hashKey, node.ids)
 	if len(node.children) > 0 {
 		fmt.Printf("[\n")
 		for _, v := range node.children {
