@@ -151,6 +151,7 @@ func NewLshForest(dim, l, m int, w float64) *LshForest {
 	}
 }
 
+// Delete releases the memory used by this index.
 func (index *LshForest) Delete() {
 	for _, tree := range index.trees {
 		(*tree.root).recursiveDelete()
