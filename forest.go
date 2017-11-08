@@ -20,25 +20,24 @@ func (node *treeNode) recursiveAdd(level int, id string, tableKey hashTableKey) 
 	if level == len(tableKey) {
 		node.ids = append(node.ids, id)
 		return false
-	} else {
-		// Check if next hash exists in children map. If not, create.
-		var next *treeNode
-		hasNewHash := false
-		if nextNode, ok := node.children[tableKey[level]]; !ok {
-			next = &treeNode{
-				hashKey:  tableKey[level],
-				ids:      make([]string, 0),
-				children: make(map[int]*treeNode),
-			}
-			node.children[tableKey[level]] = next
-			hasNewHash = true
-		} else {
-			next = nextNode
-		}
-		// Recurse using next level's hash value.
-		recursive := next.recursiveAdd(level+1, id, tableKey)
-		return hasNewHash || recursive
 	}
+	// Check if next hash exists in children map. If not, create.
+	var next *treeNode
+	hasNewHash := false
+	if nextNode, ok := node.children[tableKey[level]]; !ok {
+		next = &treeNode{
+			hashKey:  tableKey[level],
+			ids:      make([]string, 0),
+			children: make(map[int]*treeNode),
+		}
+		node.children[tableKey[level]] = next
+		hasNewHash = true
+	} else {
+		next = nextNode
+	}
+	// Recurse using next level's hash value.
+	recursive := next.recursiveAdd(level+1, id, tableKey)
+	return hasNewHash || recursive
 }
 
 func tab(times int) {
@@ -49,7 +48,7 @@ func tab(times int) {
 
 func (node *treeNode) dump(level int) {
 	tab(level)
-	fmt.Printf("{ (%s): ids %o ", node.hashKey, node.ids)
+	fmt.Printf("{ (%d): ids %o ", node.hashKey, node.ids)
 	if len(node.children) > 0 {
 		fmt.Printf("[\n")
 		for _, v := range node.children {
@@ -80,10 +79,10 @@ func (tree *prefixTree) lookup(maxLevel int, tableKey hashTableKey,
 	done <-chan struct{}, out chan<- string) {
 	currentNode := tree.root
 	for level := 0; level < len(tableKey) && level < maxLevel; level++ {
-		if next, ok := currentNode.children[tableKey[level]]; !ok {
-			return
-		} else {
+		if next, ok := currentNode.children[tableKey[level]]; ok {
 			currentNode = next
+		} else {
+			return
 		}
 	}
 
@@ -125,7 +124,7 @@ type LshForest struct {
 // family of LSH functions.
 func NewLshForest(dim, l, m int, w float64) *LshForest {
 	trees := make([]prefixTree, l)
-	for i, _ := range trees {
+	for i := range trees {
 		trees[i].count = 0
 		trees[i].root = &treeNode{
 			hashKey:  0,
