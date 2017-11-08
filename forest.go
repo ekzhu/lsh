@@ -19,13 +19,11 @@ func (node *treeNode) recursiveDelete() {
 		if len((child).children) > 0 {
 			(child).recursiveDelete()
 		}
-
-		if len(child.indices) > 0 {
-			node.indices = nil
+		if len(child.ids) > 0 {
+			node.ids = nil
 		}
 	}
-
-	node.indices = nil
+	node.ids = nil
 	node.children = nil
 }
 
