@@ -74,9 +74,5 @@ func Test_Delete(t *testing.T) {
 	for i, p := range points {
 		lsh.Insert(p, strconv.Itoa(i))
 	}
-	for _, table := range lsh.tables {
-		if len(table) == 0 {
-			t.Error("Failed inserting points.")
-		}
-	}
+	Test_Insert(t)
 }
