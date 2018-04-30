@@ -71,8 +71,5 @@ func Test_Delete(t *testing.T) {
 			t.Errorf("Failed to delete point %v.", i)
 		}
 	}
-	for i, p := range points {
-		lsh.Insert(p, strconv.Itoa(i))
-	}
 	Test_Insert(t)
 }
