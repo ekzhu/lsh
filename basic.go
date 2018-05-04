@@ -103,12 +103,10 @@ func (index *BasicLsh) Delete(id string) {
 			for tableIndex, bucket := range table {
 				for index, identifier := range bucket {
 					if id == identifier {
-						fmt.Println("original", bucket)
 						table[tableIndex] = remove(bucket, index)
 						if len(table[tableIndex]) == 0 {
 							delete(table, tableIndex)
 						}
-						fmt.Println("deleted", table[tableIndex])
 					}
 				}
 			}
