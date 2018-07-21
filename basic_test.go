@@ -47,3 +47,29 @@ func Test_Query(t *testing.T) {
 		}
 	}
 }
+
+func Test_Delete(t *testing.T) {
+	lsh := NewBasicLsh(100, 5, 5, 5.0)
+	points := randomPoints(10, 100, 32.0)
+	for i, p := range points {
+		lsh.Insert(p, strconv.Itoa(i))
+	}
+	for i, p := range points {
+		lsh.Delete(strconv.Itoa(i))
+		for _, table := range lsh.tables {
+			if len(table) != len(points)-(i+1) {
+				t.Errorf("Failed to delete point %v. Expected to have %v points, found %v.", i, len(points)-(i+1), len(table))
+			}
+		}
+		found := false
+		for _, foundKey := range lsh.Query(p) {
+			if foundKey == strconv.Itoa(i) {
+				found = true
+			}
+		}
+		if found {
+			t.Errorf("Failed to delete point %v.", i)
+		}
+	}
+	Test_Insert(t)
+}

@@ -90,3 +90,34 @@ func (index *BasicLsh) Query(q Point) []string {
 	}
 	return ids
 }
+
+// Delete removes a new data point to the LSH.
+// id is the unique identifier for the data point.
+func (index *BasicLsh) Delete(id string) {
+	// Delete key from all hash tables
+	var wg sync.WaitGroup
+	wg.Add(len(index.tables))
+	for i := range index.tables {
+		table := index.tables[i]
+		go func(table hashTable) {
+			for tableIndex, bucket := range table {
+				for index, identifier := range bucket {
+					if id == identifier {
+						table[tableIndex] = remove(bucket, index)
+						if len(table[tableIndex]) == 0 {
+							delete(table, tableIndex)
+						}
+					}
+				}
+			}
+			wg.Done()
+		}(table)
+	}
+	wg.Wait()
+}
+
+func remove(original []string, index int) []string {
+	original[index] = original[len(original)-1]
+	original = original[:len(original)-1]
+	return original
+}
